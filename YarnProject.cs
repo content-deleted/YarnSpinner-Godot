@@ -1,7 +1,7 @@
 using Godot;
 
 namespace YarnSpinnerGodot {
-    public partial class YarnProgram : Resource {
+    public partial class YarnProject : Resource {
 
     }
 }

@@ -1,15 +1,21 @@
 #if TOOLS
 using Godot;
 
-namespace YarnSpinnerGodot {
+namespace YarnSpinnerGodot.Editor {
     [Tool]
     public partial class Plugin : EditorPlugin {
         public const string ADDON_PATH = "res://addons/YarnSpinner-Godot/";
         public const string RUNTIME_PATH = ADDON_PATH + "Runtime/";
         public const string EDITOR_PATH = ADDON_PATH + "Editor/";
 
+        private YarnImporterPlugin _yarnImporterPlugin;
+
 
         public override void _EnterTree() {
+            _yarnImporterPlugin = new YarnImporterPlugin();
+            AddImportPlugin(_yarnImporterPlugin);
+
+
             AddCustomType(
                 "YarnFile",
                 "Resource",
@@ -17,9 +23,9 @@ namespace YarnSpinnerGodot {
                 ResourceLoader.Load<Texture2D>(EDITOR_PATH + "Icons/YarnScript Icon.svg")
             );
             AddCustomType(
-                "YarnProgram",
+                "YarnProject",
                 "Resource",
-                ResourceLoader.Load<Script>(RUNTIME_PATH + "Core/Program/YarnProgram.cs"),
+                ResourceLoader.Load<Script>(RUNTIME_PATH + "YarnProject.cs"),
                 ResourceLoader.Load<Texture2D>(EDITOR_PATH + "Icons/YarnProject Icon.svg")
             );
 
@@ -28,7 +34,12 @@ namespace YarnSpinnerGodot {
 
         public override void _ExitTree() {
             RemoveCustomType("YarnFile");
-            RemoveCustomType("YarnProgram");
+            RemoveCustomType("YarnProject");
+
+            if(_yarnImporterPlugin != null) {
+                RemoveImportPlugin(_yarnImporterPlugin);
+                _yarnImporterPlugin = null;
+            }
         }
     }
 }
