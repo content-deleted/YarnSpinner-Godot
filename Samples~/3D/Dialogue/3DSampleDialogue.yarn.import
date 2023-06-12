@@ -1,0 +1,14 @@
+[remap]
+
+importer="com.YarnSpinnerGodot.YarnFile"
+type="Resource"
+uid="uid://ekfw3fhtwe30"
+path="res://.godot/imported/3DSampleDialogue.yarn-adc41c58a3907c4876c3209f051d1ba2.tres"
+
+[deps]
+
+source_file="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/3DSampleDialogue.yarn"
+dest_files=["res://.godot/imported/3DSampleDialogue.yarn-adc41c58a3907c4876c3209f051d1ba2.tres"]
+
+[params]
+

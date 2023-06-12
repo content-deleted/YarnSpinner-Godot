@@ -2,7 +2,7 @@
 using Godot;
 using Godot.Collections;
 
-namespace YarnSpinnerGodot.Editor {
+namespace Yarn.GodotYarn.Editor {
     [Tool]
     public partial class YarnImporterPlugin : EditorImportPlugin {
         private const string YARN_TRACKER_PATH = Plugin.ADDON_PATH + ".tracked_yarn_files";
@@ -23,17 +23,17 @@ namespace YarnSpinnerGodot.Editor {
         public override Error _Import(string sourceFile, string savePath, Dictionary options, Array<string> platformVariants, Array<string> genFiles) {
             GD.Print("Importing -> ", sourceFile);
 
-            string content = string.Empty;
+            // string content = string.Empty;
 
-            using(FileAccess access = FileAccess.Open(sourceFile, FileAccess.ModeFlags.Read)) {
-                content = access.GetAsText();
-            }
+            // using(FileAccess access = FileAccess.Open(sourceFile, FileAccess.ModeFlags.Read)) {
+            //     content = access.GetAsText();
+            // }
 
             // After we're done caching the tracked files, we now import the yarn file
 
             string saveFilePath = $"{savePath}.{_GetSaveExtension()}";
 
-            YarnScript yarnFile = new YarnScript(content);
+            YarnScript yarnFile = new YarnScript();
             yarnFile.ResourcePath = sourceFile;
             yarnFile.ResourceName = sourceFile.GetFile();
 
