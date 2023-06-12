@@ -168,6 +168,8 @@ namespace Yarn.GodotYarn {
                     continue;
                 }
 
+                GD.Print("Generating string file for language ", lang.LanguageID);
+
                 IEnumerable<StringTableEntry> stringTable;
 
                 // Where do we get our strings from? If it's the default
@@ -208,7 +210,11 @@ namespace Yarn.GodotYarn {
                             using(FileAccess access = FileAccess.Open(sourceScripts[0].ResourcePath, FileAccess.ModeFlags.Read)) {
                                 target = access.GetPathAbsolute();
                             }
-                            target = target.ReplaceN(".yarn.tres", "(" + lang.LanguageID + ").csv.tres");
+                            GD.Print(target);
+
+                            target = target.Replace(".yarn", "(" + lang.LanguageID + ").csv.tres");
+
+                            GD.Print(target);
 
                             GD.Print("Generate " + target);
                             using (var writer = new StreamWriter(target)) {
@@ -220,8 +226,8 @@ namespace Yarn.GodotYarn {
                                 lang.StringFile = target;
                             }
     #else
-                        GD.PushWarning($"Not creating a localization for {lang.LanguageID} in the Yarn Project {projectName} because a text asset containing the strings wasn't found. Add a .csv file containing the translated lines to the Yarn Project's inspector.");
-                        continue;
+                            GD.PushWarning($"Not creating a localization for {lang.LanguageID} in the Yarn Project {projectName} because a text asset containing the strings wasn't found. Add a .csv file containing the translated lines to the Yarn Project's inspector.");
+                            continue;
     #endif
                         }
 
@@ -249,7 +255,6 @@ namespace Yarn.GodotYarn {
         }
 
         public Localization GetLocalization(string localeCode) {
-
             // If localeCode is null, we use the base localization.
             if (localeCode == null) {
                 return baseLocalization;

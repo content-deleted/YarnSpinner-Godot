@@ -6,6 +6,7 @@ namespace Yarn.GodotYarn {
         STRING, BOOLEAN, NUMBER
     }
 
+    [Tool]
     public partial class Declaration : Resource {
         [Export] public string Name { get; set; }
         [Export] public DeclarationType Type { get; set; }

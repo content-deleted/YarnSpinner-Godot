@@ -83,7 +83,7 @@ namespace Yarn.GodotYarn {
             // we first need to make sure that the value isn't already set in the storage
             var values = yarnProject.GetProgram().InitialValues;
             foreach (var pair in values) {
-                if (!overrideExistingValues && VariableStorage.Contains(pair.Key)) {
+                if (overrideExistingValues == false && VariableStorage.Contains(pair.Key)) {
                     continue;
                 }
                 var value = pair.Value;
@@ -117,6 +117,10 @@ namespace Yarn.GodotYarn {
         }
 
         public override void _Process(double delta) {
+            if(Godot.Engine.IsEditorHint()) {
+                return;
+            }
+
             List<IEnumerator> dead = new List<IEnumerator>();
             foreach (var c in coroutines) {
                 var sec = c.Current as WaitForSeconds;
@@ -383,6 +387,10 @@ namespace Yarn.GodotYarn {
         private Yarn.OptionSet currentOptions;
 
         public override void _Ready() {
+            if(Godot.Engine.IsEditorHint()) {
+                return;
+            }
+
             if (lineProvider == null) {
                 // If we don't have a line provider, create a
                 // TextLineProvider and make it use that.

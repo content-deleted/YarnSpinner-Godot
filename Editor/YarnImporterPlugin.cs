@@ -7,8 +7,8 @@ namespace Yarn.GodotYarn.Editor {
     public partial class YarnImporterPlugin : EditorImportPlugin {
         private const string YARN_TRACKER_PATH = Plugin.ADDON_PATH + ".tracked_yarn_files";
 
-        public override string _GetImporterName() => "com.YarnSpinnerGodot.YarnFile";
-        public override string _GetVisibleName() => "Yarn Files";
+        public override string _GetImporterName() => "com.YarnSpinner-Godot.YarnScript";
+        public override string _GetVisibleName() => "Yarn Script";
         public override float _GetPriority() => 1.0f;
         public override int _GetImportOrder() => 0;
         public override string[] _GetRecognizedExtensions() => new string[] { "yarn" };
@@ -21,7 +21,7 @@ namespace Yarn.GodotYarn.Editor {
         }
 
         public override Error _Import(string sourceFile, string savePath, Dictionary options, Array<string> platformVariants, Array<string> genFiles) {
-            GD.Print("Importing -> ", sourceFile);
+            // GD.Print("Importing -> ", sourceFile);
 
             // string content = string.Empty;
 

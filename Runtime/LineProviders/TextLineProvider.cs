@@ -5,12 +5,21 @@ using System.Collections.Generic;
 
 namespace Yarn.GodotYarn {
     public partial class TextLineProvider : LineProviderBehaviour {
+        /// <summary>
+        /// Specifies the language code to use for text content
+        /// for this <see cref="TextLineProvider"/>.
+        /// </summary>
+        [Language]
+        [Export]
+        public string textLanguageCode = System.Globalization.CultureInfo.CurrentCulture.Name;
         public override LocalizedLine GetLocalizedLine(Yarn.Line line) {
-            var text = YarnProject.GetLocalization("Chinese (Simplified)").GetLocalizedString(line.ID);
+            var text = YarnProject.GetLocalization(textLanguageCode).GetLocalizedString(line.ID);
+
             return new LocalizedLine() {
                 TextID = line.ID,
                 RawText = text,
-                Substitutions = line.Substitutions
+                Substitutions = line.Substitutions,
+                // Metadata = YarnProject.lineMetadata.GetMetadata(line.ID),
             };
         }
 
@@ -19,5 +28,6 @@ namespace Yarn.GodotYarn {
         }
 
         public override bool LinesAvailable => true;
+        public override string LocaleCode => textLanguageCode;
     }
 }
