@@ -141,7 +141,7 @@ namespace Yarn.GodotYarn {
         /// <summary>
         /// A stop token that is used to interrupt the current animation.
         /// </summary>
-        Effects.CoroutineInterruptToken currentStopToken = new Effects.CoroutineInterruptToken();
+        CoroutineInterruptToken currentStopToken = new CoroutineInterruptToken();
 
         public override void _EnterTree() {
             Color c = this.Modulate;
@@ -261,6 +261,7 @@ namespace Yarn.GodotYarn {
                     if (currentStopToken.WasInterrupted) {
                         // The typewriter effect was interrupted. Stop this
                         // entire coroutine.
+                        // GD.Print("Was interrupted");
                         yield break;
                     }
                 }
@@ -286,6 +287,7 @@ namespace Yarn.GodotYarn {
 
             // Show the continue button, if we have one.
             if (_continueButton != null) {
+                // GD.Print("Displaying continue button");
                 _continueButton.Visible = true;
             }
 
@@ -319,6 +321,8 @@ namespace Yarn.GodotYarn {
                 return;
             }
 
+            // GD.Print("UserRequestedViewAdvancement");
+
             // we may want to change this later so the interrupted
             // animation coroutine is what actually interrupts
             // for now this is fine.
@@ -331,7 +335,7 @@ namespace Yarn.GodotYarn {
 
             // No animation is now running. Signal that we want to
             // interrupt the line instead.
-            onUserWantsLineContinuation?.Invoke();
+            requestInterrupt?.Invoke();
         }
 
         /// <summary>

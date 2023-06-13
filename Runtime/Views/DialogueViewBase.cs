@@ -39,7 +39,29 @@ namespace Yarn.GodotYarn {
     /// <seealso cref="LineProviderBehaviour"/>
     /// <seealso cref="DialogueRunner.dialogueViews"/>
     public abstract partial class DialogueViewBase : Control {
-        internal System.Action onUserWantsLineContinuation;
+        /// <summary>
+        /// Represents the method that should be called when this view wants the
+        /// line to be interrupted.
+        /// </summary>
+        /// <remarks>
+        /// <para style="info">This value is set by the <see
+        /// cref="DialogueRunner"/> class during initial setup. Do not modify
+        /// this value yourself.
+        /// </para>
+        /// <para>
+        /// When this method is called, the Dialogue Runner that has this
+        /// Dialogue View in its <see cref="DialogueRunner.dialogueViews"/> list
+        /// will call <see cref="InterruptLine(LocalizedLine, Action)"/> on any
+        /// view that has not yet finished presenting its line.
+        /// </para>
+        /// <para>
+        /// A Dialogue View can call this method to signal to the Dialogue
+        /// Runner that the current line should be interrupted. This is usually
+        /// done when it receives some input that the user wants to skip to the
+        /// next line of dialogue.
+        /// </para>
+        /// </remarks>
+        internal System.Action requestInterrupt;
 
         private List<IEnumerator> coroutines = new List<IEnumerator>();
 
@@ -171,10 +193,6 @@ namespace Yarn.GodotYarn {
         public virtual void InterruptLine(LocalizedLine dialogueLine, Action onDialogueLineFinished) {
             // the default implementation does nothing
             onDialogueLineFinished?.Invoke();
-        }
-
-        public virtual void OnLineStatusChanged(LocalizedLine dialogueLine) {
-            // Default implementation is a no-op.
         }
 
         /// <summary>
@@ -334,11 +352,6 @@ namespace Yarn.GodotYarn {
         /// </remarks>
         public virtual void UserRequestedViewAdvancement() {
             // default implementation does nothing
-        }
-
-        public void ReadyForNextLine() {
-            // Call the continuation callback, if we have it.
-            onUserWantsLineContinuation?.Invoke();
         }
 
         public void StopAllCoroutines() {

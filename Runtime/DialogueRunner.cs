@@ -45,15 +45,68 @@ namespace Yarn.GodotYarn {
 
         public bool IsDialogueRunning { get; set; }
 
+        /// <summary>
+        /// A Godot event that is called when a node starts running.
+        /// </summary>
+        /// <remarks>
+        /// This event receives as a parameter the name of the node that is
+        /// about to start running.
+        /// </remarks>
+        /// <seealso cref="Dialogue.NodeStartHandler"/>
         [Signal]
         public delegate void onNodeStartEventHandler(string str);
 
+        /// <summary>
+        /// A Godot event that is called when a node is complete.
+        /// </summary>
+        /// <remarks>
+        /// This event receives as a parameter the name of the node that
+        /// just finished running.
+        /// </remarks>
+        /// <seealso cref="Dialogue.NodeCompleteHandler"/>
         [Signal]
         public delegate void onNodeCompleteEventHandler(string str);
 
+        /// <summary>
+        /// A Godot event that is called when the dialogue starts running.
+        /// </summary>
+        [Signal]
+        public delegate void onDialogueStartEventHandler();
+
+        /// <summary>
+        /// A Godot event that is called once the dialogue has completed.
+        /// </summary>
+        /// <seealso cref="Dialogue.DialogueCompleteHandler"/>
         [Signal]
         public delegate void onDialogueCompleteEventHandler();
 
+        /// <summary>
+        /// A <see cref="Signal"/> that is called when a <see
+        /// cref="Command"/> is received.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Use this method to dispatch a command to other parts of your game.
+        /// This method is only called if the <see cref="Command"/> has not been
+        /// handled by a command handler that has been added to the <see
+        /// cref="DialogueRunner"/>, or by a method on a <see
+        /// cref="Godot.Node"/> in the scene with the attribute <see
+        /// cref="YarnCommandAttribute"/>.
+        /// </para>
+        /// <para style="hint">
+        /// When a command is delivered in this way, the <see
+        /// cref="DialogueRunner"/> will not pause execution. If you want a
+        /// command to make the DialogueRunner pause execution, see <see
+        /// cref="AddCommandHandler(string, Delegate)"/>.
+        /// </para>
+        /// <para>
+        /// This method receives the full text of the command, as it appears
+        /// between the <c>&lt;&lt;</c> and <c>&gt;&gt;</c> markers.
+        /// </para>
+        /// </remarks>
+        /// <seealso cref="AddCommandHandler(string, Delegate)"/>
+        /// <seealso cref="AddCommandHandler(string, Delegate)"/>
+        /// <seealso cref="YarnCommandAttribute"/>
         [Signal]
         public delegate void onCommandEventHandler(string str);
 
@@ -144,12 +197,17 @@ namespace Yarn.GodotYarn {
             dead.Clear();
         }
 
+        /// <summary>
+        /// Start the dialogue from a specific node.
+        /// </summary>
+        /// <param name="startNode">The name of the node to start running
+        /// from.</param>
         public void StartDialogue(string startNode) {
             // If the dialogue is currently executing instructions, then
             // calling ContinueDialogue() at the end of this method will
             // cause confusing results. Report an error and stop here.
             if (Dialogue.IsActive) {
-                GD.PrintErr($"Can't start dialogue from node {startNode}: the dialogue is currently in the middle of running. Stop the dialogue first.");
+                GD.PushError($"Can't start dialogue from node {startNode}: the dialogue is currently in the middle of running. Stop the dialogue first.");
                 return;
             }
 
@@ -166,6 +224,8 @@ namespace Yarn.GodotYarn {
 
             // Mark that we're in conversation.
             IsDialogueRunning = true;
+
+            EmitSignal("onDialogueStart");
 
             // Signal that we're starting up.
             foreach (var dialogueView in dialogueViews) {
@@ -358,18 +418,22 @@ namespace Yarn.GodotYarn {
 
         public void RemoveFunction(string name) => Dialogue.Library.DeregisterFunction(name);
 
+        /// <summary>
+        /// Sets the dialogue views and makes sure the callback <see cref="DialogueViewBase.MarkLineComplete"/>
+        /// will respond correctly.
+        /// </summary>
+        /// <param name="views">The array of views to be assigned.</param>
         public void SetDialogueViews(DialogueViewBase[] views) {
-            dialogueViews = views;
-
-            Action continueAction = OnViewUserIntentNextLine;
-            foreach (var dialogueView in dialogueViews) {
-                if (dialogueView == null) {
-                    GD.PrintErr("The 'Dialogue Views' field contains a NULL element.");
+            foreach (var view in views) {
+                if (view == null) {
+                    // GD.PrintErr("The 'Dialogue Views' field contains a NULL element.");
                     continue;
                 }
 
-                dialogueView.onUserWantsLineContinuation = continueAction;
+                view.requestInterrupt = OnViewRequestedInterrupt;
             }
+
+            dialogueViews = views;
         }
 
         #region Private Properties/Variables/Procedures
@@ -416,17 +480,13 @@ namespace Yarn.GodotYarn {
                 return;
             }
 
-            // Give each dialogue view the continuation action, which
-            // they'll call to pass on the user intent to move on to the
-            // next line (or interrupt the current one).
-            System.Action continueAction = OnViewUserIntentNextLine;
             foreach (var dialogueView in dialogueViews) {
                 // Skip any null or disabled dialogue views
                 if (dialogueView == null || dialogueView.Visible == false) {
                     continue;
                 }
 
-                dialogueView.onUserWantsLineContinuation = continueAction;
+                dialogueView.requestInterrupt = OnViewRequestedInterrupt;
             }
 
             if (yarnProject != null) {
@@ -537,7 +597,7 @@ namespace Yarn.GodotYarn {
 
                 dialogueView.DialogueComplete();
             }
-            //onDialogueComplete.Invoke();
+
             EmitSignal("onDialogueComplete");
         }
 
@@ -579,6 +639,10 @@ namespace Yarn.GodotYarn {
             ContinueDialogue();
         }
 
+        /// <summary>
+        /// Forward the line to the dialogue UI.
+        /// </summary>
+        /// <param name="line">The line to send to the dialogue views.</param>
         private void HandleLine(Yarn.Line line) {
             // Get the localized line from our line provider
             CurrentLine = lineProvider.GetLocalizedLine(line);
@@ -587,7 +651,7 @@ namespace Yarn.GodotYarn {
             var text = Yarn.Dialogue.ExpandSubstitutions(CurrentLine.RawText, CurrentLine.Substitutions);
 
             if (text == null) {
-                GD.PrintErr($"Dialogue Runner couldn't expand substitutions in Yarn Project [{ yarnProject.ProjectName }] node [{ CurrentNodeName }] with line ID [{ CurrentLine.TextID }]. "
+                GD.PushWarning($"Dialogue Runner couldn't expand substitutions in Yarn Project [{ yarnProject.ProjectName }] node [{ CurrentNodeName }] with line ID [{ CurrentLine.TextID }]. "
                     + "This usually happens because it couldn't find text in the Localization. The line may not be tagged properly. "
                     + "Try re-importing this Yarn Program. "
                     + "For now, Dialogue Runner will swap in CurrentLine.RawText.");
@@ -624,6 +688,35 @@ namespace Yarn.GodotYarn {
                     () => DialogueViewCompletedDelivery(dialogueView));
             }
         }
+
+        // called by the runner when a view has signalled that it needs to interrupt the current line
+        void InterruptLine() {
+            ActiveDialogueViews.Clear();
+
+            foreach(var dialogueView in dialogueViews) {
+                if(dialogueView == null || dialogueView.Visible == false || dialogueView.CanProcess() == false) {
+                    continue;
+                }
+
+                ActiveDialogueViews.Add(dialogueView);
+            }
+
+            foreach(var dialogueView in dialogueViews) {
+                dialogueView.InterruptLine(CurrentLine, ()=> DialogueViewCompletedInterrupt(dialogueView));
+            }
+        }
+
+        /// <summary>
+        /// Indicates to the DialogueRunner that the user has selected an
+        /// option
+        /// </summary>
+        /// <param name="optionIndex">The index of the option that was
+        /// selected.</param>
+        /// <exception cref="InvalidOperationException">Thrown when the
+        /// <see cref="IsOptionSelectionAllowed"/> field is <see
+        /// langword="true"/>, which is the case when <see
+        /// cref="DialogueViewBase.RunOptions(DialogueOption[],
+        /// Action{int})"/> is in the middle of being called.</exception>
         void SelectedOption(int optionIndex) {
             if (IsOptionSelectionAllowed == false) {
                 throw new InvalidOperationException("Selecting an option on the same frame that options are provided is not allowed. Wait at least one frame before selecting an option.");
@@ -707,6 +800,7 @@ namespace Yarn.GodotYarn {
 
             return CommandDispatchResult.Success;
         }
+
         private static IEnumerator WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
             // Invoke the delegate.
             var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as IEnumerator;
@@ -768,6 +862,12 @@ namespace Yarn.GodotYarn {
             lineProvider.PrepareForLines(lineIDs);
         }
 
+        /// <summary>
+        /// Called when a <see cref="DialogueViewBase"/> has finished
+        /// delivering its line.
+        /// </summary>
+        /// <param name="dialogueView">The view that finished delivering
+        /// the line.</param>
         private void DialogueViewCompletedDelivery(DialogueViewBase dialogueView) {
             // A dialogue view just completed its delivery. Remove it from
             // the set of active views.
@@ -775,34 +875,17 @@ namespace Yarn.GodotYarn {
 
             // Have all of the views completed?
             if (ActiveDialogueViews.Count == 0) {
-                UpdateLineStatus(CurrentLine, LineStatus.FinishedPresenting);
-
-                // Should the line automatically become Ended as soon as
-                // it's Delivered?
-                if (automaticallyContinueLines) {
-                    // Go ahead and notify the views.
-                    UpdateLineStatus(CurrentLine, LineStatus.Dismissed);
-
-                    // Additionally, tell the views to dismiss the line
-                    // from presentation. When each is done, it will notify
-                    // this dialogue runner to call
-                    // DialogueViewCompletedDismissal; when all have
-                    // finished, this dialogue runner will tell the
-                    // Dialogue to Continue() when all lines are done
-                    // dismissing the line.
-                    DismissLineFromViews(dialogueViews);
-                }
+                DismissLineFromViews(dialogueViews);
             }
         }
 
-        private void UpdateLineStatus(LocalizedLine line, LineStatus newStatus) {
-            // Update the state of the line and let the views know.
-            line.Status = newStatus;
+        // this is similar to the above but for the interrupt
+        // main difference is a line continues automatically every interrupt finishes
+        private void DialogueViewCompletedInterrupt(DialogueViewBase dialogueView) {
+            ActiveDialogueViews.Remove(dialogueView);
 
-            foreach (var dialogueView in dialogueViews) {
-                if (dialogueView == null || dialogueView.Visible == false) continue;
-
-                dialogueView.OnLineStatusChanged(line);
+            if(ActiveDialogueViews.Count == 0) {
+                DismissLineFromViews(dialogueViews);
             }
         }
 
@@ -811,53 +894,30 @@ namespace Yarn.GodotYarn {
             Dialogue.Continue();
         }
 
-        public void OnViewUserIntentNextLine() {
-
+        /// <summary>
+        /// Called by a <see cref="DialogueViewBase"/> derived class from
+        /// <see cref="dialogueViews"/> to inform the <see
+        /// cref="DialogueRunner"/> that the user intents to proceed to the
+        /// next line.
+        /// </summary>
+        public void OnViewRequestedInterrupt() {
             if (CurrentLine == null) {
                 // There's no active line, so there's nothing that can be
                 // done here.
-                GD.PrintErr($"{nameof(OnViewUserIntentNextLine)} was called, but no line was running.");
+                GD.PushWarning($"Dialogue runner was asked to advance but there is no current line");
                 return;
             }
 
-            switch (CurrentLine.Status) {
-                case LineStatus.Presenting:
-                    // The line has been Interrupted. Dialogue views should
-                    // proceed to finish the delivery of the line as
-                    // quickly as they can. (When all views have finished
-                    // their expedited delivery, they call their completion
-                    // handler as normal, and the line becomes Delivered.)
-                    UpdateLineStatus(CurrentLine, LineStatus.Interrupted);
-                    break;
-                case LineStatus.Interrupted:
-                    // The line was already interrupted, and the user has
-                    // requested the next line again. We interpret this as
-                    // the user being insistent. This means the line is now
-                    // Ended, and the dialogue views must dismiss the line
-                    // immediately.
-                    UpdateLineStatus(CurrentLine, LineStatus.Dismissed);
-                    break;
-                case LineStatus.FinishedPresenting:
-                    // The line had finished delivery (either normally or
-                    // because it was Interrupted), and the user has
-                    // indicated they want to proceed to the next line. The
-                    // line is therefore Ended.
-                    UpdateLineStatus(CurrentLine, LineStatus.Dismissed);
-                    break;
-                case LineStatus.Dismissed:
-                    // The line has already been ended, so there's nothing
-                    // further for the views to do. (This will only happen
-                    // during the interval of time between a line becoming
-                    // Ended and the next line appearing.)
-                    break;
+            // asked to advance when there are no active views
+            // this means the views have already processed the lines as needed
+            // so we can ignore this action
+            if (ActiveDialogueViews.Count == 0) {
+                GD.Print("user requested advance, all views finished, ignoring interrupt");
+                return;
             }
 
-            if (CurrentLine.Status == LineStatus.Dismissed) {
-                // This line is Ended, so we need to tell the dialogue
-                // views to dismiss it.
-                DismissLineFromViews(dialogueViews);
-            }
-
+            // now because lines are fully responsible for advancement the only advancement allowed is interruption
+            InterruptLine();
         }
 
         private void DismissLineFromViews(IEnumerable<DialogueViewBase> dialogueViews) {
@@ -881,7 +941,9 @@ namespace Yarn.GodotYarn {
             }
 
             foreach (var dialogueView in dialogueViews) {
-                if (dialogueView == null || dialogueView.Visible == false) continue;
+                if (dialogueView == null || dialogueView.Visible == false) {
+                    continue;
+                }
 
                 dialogueView.DismissLine(() => DialogueViewCompletedDismissal(dialogueView));
             }

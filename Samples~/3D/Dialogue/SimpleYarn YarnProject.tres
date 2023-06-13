@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=4 format=3 uid="uid://ckixuaqeep47s"]
+
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/YarnProject.cs" id="1_6xqaa"]
+[ext_resource type="Resource" uid="uid://dxfkqwvhfw44x" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/en-US.tres" id="1_fiha3"]
+[ext_resource type="Resource" uid="uid://cl5j88loc5q85" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn.yarn" id="2_jomc6"]
+
+[resource]
+script = ExtResource("1_6xqaa")
+ProjectName = "Simple Yarn"
+SourceScripts = [ExtResource("2_jomc6")]
+DefaultLanguage = "en-US"
+Languages = [ExtResource("1_fiha3")]
+Declarations = null

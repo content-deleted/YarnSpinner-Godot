@@ -10,66 +10,6 @@ namespace Yarn.GodotYarn {
     /// </summary>
     public static class Effects {
         /// <summary>
-        /// An object that can be used to signal to a coroutine that it should
-        /// terminate early.
-        /// </summary>
-        /// <remarks>
-        /// <para>
-        /// While coroutines can be stopped by calling <see
-        /// cref="MonoBehaviour.StopCoroutine"/> or <see
-        /// cref="MonoBehaviour.StopAllCoroutines"/>, this has the side effect
-        /// of also stopping any coroutine that was waiting for the now-stopped
-        /// coroutine to finish.
-        /// </para>
-        /// <para>
-        /// Instances of this class may be passed as a parameter to a coroutine
-        /// that they can periodically poll to see if they should terminate
-        /// earlier than planned.
-        /// </para>
-        /// <para>
-        /// To use this class, create an instance of it, and pass it as a
-        /// parameter to your coroutine. In the coroutine, call <see
-        /// cref="Start"/> to mark that the coroutine is running. During the
-        /// coroutine's execution, periodically check the <see
-        /// cref="WasInterrupted"/> property to determine if the coroutine
-        /// should exit. If it is <see langword="true"/>, the coroutine should
-        /// exit (via the <c>yield break</c> statement.) At the normal exit of
-        /// your coroutine, call the <see cref="Complete"/> method to mark that the
-        /// coroutine is no longer running. To make a coroutine stop, call the
-        /// <see cref="Interrupt"/> method.
-        /// </para>
-        /// <para>
-        /// You can also use the <see cref="CanInterrupt"/> property to
-        /// determine if the token is in a state in which it can stop (that is,
-        /// a coroutine that's using it is currently running.)
-        /// </para>
-        /// </remarks>
-        public class CoroutineInterruptToken {
-            /// <summary>
-            /// The state that the token is in.
-            /// </summary>
-            enum State {
-                NotRunning,
-                Running,
-                Interrupted,
-            }
-
-            private State state = State.NotRunning;
-
-            public bool CanInterrupt => state == State.Running;
-            public bool WasInterrupted => state == State.Interrupted;
-            public void Start() => state = State.Running;
-            public void Interrupt() {
-                if (CanInterrupt == false) {
-                    throw new InvalidOperationException($"Cannot stop {nameof(CoroutineInterruptToken)}; state is {state} (and not {nameof(State.Running)}");
-                }
-                state = State.Interrupted;
-            }
-
-            public void Complete() => state = State.NotRunning;
-        }
-
-        /// <summary>
         /// A coroutine that fades a <see cref="CanvasGroup"/> object's opacity
         /// from <paramref name="from"/> to <paramref name="to"/> over the
         /// course of <see cref="fadeTime"/> seconds, and then invokes <paramref
@@ -82,6 +22,7 @@ namespace Yarn.GodotYarn {
         /// <param name="stopToken">A <see cref="CoroutineInterruptToken"/> that
         /// can be used to interrupt the coroutine.</param>
         public static IEnumerator FadeAlpha(Control control, float from, float to, float fadeTime, CoroutineInterruptToken stopToken = null) {
+            // GD.Print("[Effects.FadeAlpha] Start");
             stopToken?.Start();
 
             Color c = control.Modulate;
@@ -118,6 +59,7 @@ namespace Yarn.GodotYarn {
             }
 
             stopToken?.Complete();
+            // GD.Print("[Effects.FadeAlpha] Complete");
         }
 
         /// <summary>
@@ -138,6 +80,7 @@ namespace Yarn.GodotYarn {
         /// can be used to interrupt the coroutine.</param>
         public static IEnumerator Typewriter(RichTextLabel text, float lettersPerSecond, Action onCharacterTyped, CoroutineInterruptToken stopToken = null) {
             stopToken?.Start();
+            // GD.Print("[Effects.Typewriter] Start");
 
             // Start with everything invisible
             text.VisibleCharacters = 0;
@@ -174,6 +117,8 @@ namespace Yarn.GodotYarn {
 
             while (text.VisibleCharacters < characterCount) {
                 if (stopToken?.WasInterrupted ?? false) {
+                    text.VisibleCharacters = -1;
+                    // GD.Print("[Effects.Typewriter] Interrupt");
                     yield break;
                 }
 
@@ -195,6 +140,7 @@ namespace Yarn.GodotYarn {
             text.VisibleCharacters = characterCount;
 
             stopToken?.Complete();
+            // GD.Print("[Effects.Typewriter] Complete");
         }
     }
 }

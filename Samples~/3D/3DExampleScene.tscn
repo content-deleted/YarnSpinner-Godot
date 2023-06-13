@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://856h1pafym44"]
 
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/DialogueRunner.cs" id="1_ats83"]
-[ext_resource type="Resource" uid="uid://rpk7m408efyi" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/3D Sample YarnProject.tres" id="2_227fb"]
+[ext_resource type="Resource" uid="uid://ckixuaqeep47s" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn YarnProject.tres" id="2_qjvdw"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LineProviders/TextLineProvider.cs" id="3_a4q5x"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/LineView.cs" id="4_8jyim"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/DialogueAdvanceInput.cs" id="4_shrdt"]
@@ -20,7 +20,7 @@ corner_radius_bottom_left = 16
 
 [node name="Node3D" type="Node3D"]
 
-[node name="DialogueRunner" type="Control" parent="."]
+[node name="DialogueRunner" type="Control" parent="." node_paths=PackedStringArray("lineProvider")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -28,10 +28,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ats83")
-yarnProject = ExtResource("2_227fb")
+yarnProject = ExtResource("2_qjvdw")
 views = [NodePath("LineView")]
-startNode = "Start3DSample"
+startNode = "SimpleYarn"
 automaticallyContinueLines = true
+lineProvider = NodePath("TextLineProvider")
 verboseLogging = false
 
 [node name="TextLineProvider" type="Node" parent="DialogueRunner"]
@@ -50,8 +51,6 @@ _useFadeEffect = true
 _useTypewriterEffect = true
 _typewriterEffectSpeed = 24.0
 _continueButton = NodePath("Continue Button")
-_holdTime = 3.0
-_showCharacterNameInLineView = false
 _characterNameText = NodePath("Background/VBoxContainer/Character Name")
 
 [node name="DialogueAdvanceInput" type="Node" parent="DialogueRunner/LineView" node_paths=PackedStringArray("dialogueView")]
