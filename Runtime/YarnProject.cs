@@ -43,18 +43,11 @@ namespace Yarn.GodotYarn {
         // private string defaultLanguage = null;
 
         public YarnProject() {}
-#if TOOLS
-        [Signal] public delegate void onSourceScriptsChangedEventHandler(YarnScript[] scripts);
-#endif
-
 
         [Export]
         public YarnScript[] SourceScripts {
             set {
                 sourceScripts = value;
-#if TOOLS
-                EmitSignal("onSourceScriptsChanged", value);
-#endif
                 // Compile();
             }
             get { return sourceScripts; }

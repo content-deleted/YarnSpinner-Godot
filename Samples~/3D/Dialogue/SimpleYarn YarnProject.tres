@@ -9,4 +9,4 @@ compiledYarnProgram = PackedByteArray(18, 244, 7, 10, 10, 83, 105, 109, 112, 108
 localizations = []
 localizationType = 0
 searchAssembliesForActions = []
-sourceScripts = [ExtResource("2_jomc6"), null, null]
+SourceScripts = [ExtResource("2_jomc6")]
