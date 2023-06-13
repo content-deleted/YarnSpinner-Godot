@@ -1,12 +1,11 @@
-[gd_scene load_steps=13 format=3 uid="uid://856h1pafym44"]
+[gd_scene load_steps=8 format=3 uid="uid://856h1pafym44"]
 
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/DialogueRunner.cs" id="1_ats83"]
 [ext_resource type="Resource" uid="uid://rpk7m408efyi" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/3D Sample YarnProject.tres" id="2_227fb"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LineProviders/TextLineProvider.cs" id="3_a4q5x"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/LineView.cs" id="4_8jyim"]
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/DialogueAdvanceInput.cs" id="4_shrdt"]
 [ext_resource type="Texture2D" uid="uid://ccf3iwtc7f7us" path="res://addons/YarnSpinner-Godot/Textures/Divider.svg" id="5_bbln0"]
-[ext_resource type="Texture2D" uid="uid://cff5l8xetwu0k" path="res://addons/YarnSpinner-Godot/Textures/Selector-On.png" id="6_bhsak"]
-[ext_resource type="Texture2D" uid="uid://clncl30gq0n6i" path="res://addons/YarnSpinner-Godot/Textures/Selector-Off.png" id="7_x6rsj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xawdr"]
 content_margin_left = 32.0
@@ -19,23 +18,9 @@ corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3pexq"]
-texture = ExtResource("6_bhsak")
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3fidc"]
-texture = ExtResource("6_bhsak")
-modulate_color = Color(0.901961, 0.901961, 0.901961, 1)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_3opy7"]
-texture = ExtResource("6_bhsak")
-modulate_color = Color(0.25098, 0.25098, 0.25098, 1)
-
-[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_4maxa"]
-texture = ExtResource("7_x6rsj")
-
 [node name="Node3D" type="Node3D"]
 
-[node name="DialogueRunner" type="Control" parent="." node_paths=PackedStringArray("lineProvider")]
+[node name="DialogueRunner" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -44,10 +29,9 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ats83")
 yarnProject = ExtResource("2_227fb")
-viewNames = PackedStringArray("LineView")
+views = [NodePath("LineView")]
 startNode = "Start3DSample"
 automaticallyContinueLines = true
-lineProvider = NodePath("TextLineProvider")
 verboseLogging = false
 
 [node name="TextLineProvider" type="Node" parent="DialogueRunner"]
@@ -62,14 +46,18 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("4_8jyim")
 _lineText = NodePath("Background/VBoxContainer/Line Text")
-_autoAdvance = true
 _useFadeEffect = true
 _useTypewriterEffect = true
 _typewriterEffectSpeed = 24.0
-_continueButton = NodePath("Background/Continue Button")
+_continueButton = NodePath("Continue Button")
 _holdTime = 3.0
 _showCharacterNameInLineView = false
 _characterNameText = NodePath("Background/VBoxContainer/Character Name")
+
+[node name="DialogueAdvanceInput" type="Node" parent="DialogueRunner/LineView" node_paths=PackedStringArray("dialogueView")]
+script = ExtResource("4_shrdt")
+dialogueView = NodePath("..")
+continueActionType = 2
 
 [node name="Background" type="PanelContainer" parent="DialogueRunner/LineView"]
 layout_mode = 1
@@ -119,12 +107,16 @@ scroll_active = false
 autowrap_mode = 0
 shortcut_keys_enabled = false
 
-[node name="Continue Button" type="Button" parent="DialogueRunner/LineView/Background"]
-custom_minimum_size = Vector2(64, 0)
-layout_mode = 2
-size_flags_horizontal = 8
-theme_override_styles/normal = SubResource("StyleBoxTexture_3pexq")
-theme_override_styles/hover = SubResource("StyleBoxTexture_3fidc")
-theme_override_styles/pressed = SubResource("StyleBoxTexture_3opy7")
-theme_override_styles/disabled = SubResource("StyleBoxTexture_4maxa")
+[node name="Continue Button" type="Button" parent="DialogueRunner/LineView"]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.975
+anchor_right = 0.5
+anchor_bottom = 0.975
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+text = "Continue"
 icon_alignment = 1

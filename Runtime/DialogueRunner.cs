@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Yarn.GodotYarn {
-    [Tool]
+    [Tool/*, GlobalClass*/]
     public partial class DialogueRunner : Control {
         internal enum CommandDispatchResult {
             Success,
@@ -27,7 +27,8 @@ namespace Yarn.GodotYarn {
             }
         }
 
-        [Export] public string[] viewNames;
+        [Export] private NodePath[] views = new NodePath[0];
+
         public DialogueViewBase[] dialogueViews;
 
         [Export] public string startNode = Yarn.Dialogue.DefaultStartNodeName;
@@ -405,9 +406,9 @@ namespace Yarn.GodotYarn {
                 }
             }
 
-            dialogueViews = new DialogueViewBase[viewNames.Length];
-            for (int i = 0; i < viewNames.Length; ++i) {
-                dialogueViews[i] = GetNode<DialogueViewBase>(viewNames[i]);
+            dialogueViews = new DialogueViewBase[views.Length];
+            for (int i = 0; i < views.Length; ++i) {
+                dialogueViews[i] = GetNode<DialogueViewBase>(views[i]);
             }
 
             if (dialogueViews.Length == 0) {

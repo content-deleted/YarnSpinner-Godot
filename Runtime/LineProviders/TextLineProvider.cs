@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace Yarn.GodotYarn {
+    // [GlobalClass]
     public partial class TextLineProvider : LineProviderBehaviour {
         /// <summary>
         /// Specifies the language code to use for text content

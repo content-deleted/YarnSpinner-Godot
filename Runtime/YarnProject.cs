@@ -9,7 +9,7 @@ using System.Security.Cryptography;
 using FileAccess = Godot.FileAccess;
 
 namespace Yarn.GodotYarn {
-    [Tool]
+    [Tool/*, GlobalClass, Icon("res://addons/YarnSpinner-Godot/Editor/Icons/YarnProject Icon.svg")*/]
     public partial class YarnProject : Resource {
         public byte[] compiledYarnProgram;
         public Localization baseLocalization;

@@ -15,6 +15,8 @@ namespace Yarn.GodotYarn.Editor {
             _yarnImporterPlugin = new YarnImporterPlugin();
             AddImportPlugin(_yarnImporterPlugin);
 
+            var gui = GetEditorInterface().GetBaseControl();
+
 
             AddCustomType(
                 "YarnScript",
@@ -32,25 +34,31 @@ namespace Yarn.GodotYarn.Editor {
                 "DialogueRunner",
                 "Control",
                 ResourceLoader.Load<Script>(RUNTIME_PATH + "DialogueRunner.cs"),
-                null
+                gui.GetThemeIcon("Control", "EditorIcons")
+            );
+            AddCustomType(
+                "DialogueAdvanceInput",
+                "Node",
+                ResourceLoader.Load<Script>(RUNTIME_PATH + "Views/DialogueAdvanceInput.cs"),
+                gui.GetThemeIcon("Node", "EditorIcons")
             );
             AddCustomType(
                 "TextLineProvider",
                 "Node",
                 ResourceLoader.Load<Script>(RUNTIME_PATH + "LineProviders/TextLineProvider.cs"),
-                null
+                gui.GetThemeIcon("Node", "EditorIcons")
             );
             AddCustomType(
                 "Declaration",
                 "Resource",
                 ResourceLoader.Load<Script>(RUNTIME_PATH + "Declaration.cs"),
-                null
+                gui.GetThemeIcon("Object", "EditorIcons")
             );
             AddCustomType(
                 "LanguageToSourceAsset",
                 "Resource",
                 ResourceLoader.Load<Script>(RUNTIME_PATH + "LanguageToSourceAsset.cs"),
-                null
+                gui.GetThemeIcon("Object", "EditorIcons")
             );
 
             GD.Print("YarnSpinner-Godot plugin initialized");
@@ -58,12 +66,12 @@ namespace Yarn.GodotYarn.Editor {
 
         public override void _ExitTree() {
             RemoveCustomType("TextLineProvider");
+            RemoveCustomType("DialogueAdvanceInput");
             RemoveCustomType("LanguageToSourceAsset");
             RemoveCustomType("Declaration");
             RemoveCustomType("DialogueRunner");
             RemoveCustomType("YarnProject");
-            RemoveCustomType("YarnFile");
-
+            RemoveCustomType("YarnScript");
             if(_yarnImporterPlugin != null) {
                 RemoveImportPlugin(_yarnImporterPlugin);
                 _yarnImporterPlugin = null;

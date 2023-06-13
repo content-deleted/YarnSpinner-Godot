@@ -7,6 +7,7 @@ namespace Yarn.GodotYarn {
     /// A Dialogue View that presents lines of dialogue, using Godot UI
     /// elements.
     /// </summary>
+    // [GlobalClass]
     public partial class LineView : DialogueViewBase {
         /// <summary>
         /// The <see cref="RichTextLabel"/> object that displays the text of
@@ -327,9 +328,10 @@ namespace Yarn.GodotYarn {
                 // started it.
                 currentStopToken.Interrupt();
             }
+
             // No animation is now running. Signal that we want to
             // interrupt the line instead.
-            // requestInterrupt?.Invoke();
+            onUserWantsLineContinuation?.Invoke();
         }
 
         /// <summary>

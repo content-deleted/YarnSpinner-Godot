@@ -21,7 +21,7 @@ namespace Yarn.GodotYarn {
     /// cref="RunOptions"/>.
     /// </para>
     /// <para>Once you have written your subclass, attach it as a component to a
-    /// <see cref="GameObject"/>, and add this game object to the list of
+    /// <see cref="Control"/>, and add this node to the list of
     /// Dialogue Views in your scene's <see cref="DialogueRunner"/>.
     /// </para>
     /// <para>Dialogue Views do not need to handle every kind of content that
@@ -355,16 +355,21 @@ namespace Yarn.GodotYarn {
 
         public override void _Process(double delta) {
             List<IEnumerator> dead = new List<IEnumerator>();
-            foreach (var c in coroutines) {
+
+            for(int i = 0; i < coroutines.Count; ++i) {
+                IEnumerator c = coroutines[i];
+
+                if(c == null) continue;
+
                 var sec = c.Current as WaitForSeconds;
-                if (sec != null) {
-                    if (sec.Tick(delta)) {
-                        if (c.MoveNext() == false) {
+                if(sec != null) {
+                    if(sec.Tick(delta)) {
+                        if(c.MoveNext() == false) {
                             dead.Add(c);
                         }
                     }
                 }
-                else if (c.MoveNext() == false) {
+                else if(c.MoveNext() == false) {
                     dead.Add(c);
                 }
             }
