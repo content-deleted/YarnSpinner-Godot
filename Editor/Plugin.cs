@@ -9,11 +9,15 @@ namespace Yarn.GodotYarn.Editor {
         public const string EDITOR_PATH = ADDON_PATH + "Editor/";
 
         private YarnImporterPlugin _yarnImporterPlugin;
+        private YarnProjectEditorInspectorPlugin _yarnProjectInspector;
 
 
         public override void _EnterTree() {
             _yarnImporterPlugin = new YarnImporterPlugin();
             AddImportPlugin(_yarnImporterPlugin);
+
+            _yarnProjectInspector = new YarnProjectEditorInspectorPlugin();
+            AddInspectorPlugin(_yarnProjectInspector);
 
             var gui = GetEditorInterface().GetBaseControl();
 
@@ -61,10 +65,14 @@ namespace Yarn.GodotYarn.Editor {
                 gui.GetThemeIcon("Object", "EditorIcons")
             );
 
+            AddAutoloadSingleton("NodeFindUtility", RUNTIME_PATH + "NodeFindUtility.cs");
+
             GD.Print("YarnSpinner-Godot plugin initialized");
         }
 
         public override void _ExitTree() {
+            RemoveAutoloadSingleton("NodeFindUtility");
+
             RemoveCustomType("TextLineProvider");
             RemoveCustomType("DialogueAdvanceInput");
             RemoveCustomType("LanguageToSourceAsset");
@@ -72,9 +80,15 @@ namespace Yarn.GodotYarn.Editor {
             RemoveCustomType("DialogueRunner");
             RemoveCustomType("YarnProject");
             RemoveCustomType("YarnScript");
+
             if(_yarnImporterPlugin != null) {
                 RemoveImportPlugin(_yarnImporterPlugin);
                 _yarnImporterPlugin = null;
+            }
+
+            if(_yarnProjectInspector != null) {
+                RemoveInspectorPlugin(_yarnProjectInspector);
+                _yarnProjectInspector = null;
             }
         }
     }

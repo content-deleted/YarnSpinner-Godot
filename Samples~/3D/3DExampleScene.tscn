@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://856h1pafym44"]
+[gd_scene load_steps=9 format=3 uid="uid://856h1pafym44"]
 
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/DialogueRunner.cs" id="1_ats83"]
 [ext_resource type="Resource" uid="uid://ckixuaqeep47s" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn YarnProject.tres" id="2_qjvdw"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LineProviders/TextLineProvider.cs" id="3_a4q5x"]
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/InMemoryVariableStorage.cs" id="4_7vp8w"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/LineView.cs" id="4_8jyim"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/DialogueAdvanceInput.cs" id="4_shrdt"]
 [ext_resource type="Texture2D" uid="uid://ccf3iwtc7f7us" path="res://addons/YarnSpinner-Godot/Textures/Divider.svg" id="5_bbln0"]
@@ -20,7 +21,7 @@ corner_radius_bottom_left = 16
 
 [node name="Node3D" type="Node3D"]
 
-[node name="DialogueRunner" type="Control" parent="." node_paths=PackedStringArray("lineProvider")]
+[node name="DialogueRunner" type="Control" parent="." node_paths=PackedStringArray("_variableStorage", "lineProvider")]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -29,6 +30,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ats83")
 yarnProject = ExtResource("2_qjvdw")
+_variableStorage = NodePath("InMemoryVariableStorage")
 views = [NodePath("LineView")]
 startNode = "SimpleYarn"
 automaticallyContinueLines = true
@@ -37,6 +39,9 @@ verboseLogging = false
 
 [node name="TextLineProvider" type="Node" parent="DialogueRunner"]
 script = ExtResource("3_a4q5x")
+
+[node name="InMemoryVariableStorage" type="Node" parent="DialogueRunner"]
+script = ExtResource("4_7vp8w")
 
 [node name="LineView" type="Control" parent="DialogueRunner" node_paths=PackedStringArray("_lineText", "_continueButton", "_characterNameText")]
 layout_mode = 1

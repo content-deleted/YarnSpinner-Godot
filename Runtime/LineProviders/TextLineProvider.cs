@@ -11,7 +11,6 @@ namespace Yarn.GodotYarn {
         /// for this <see cref="TextLineProvider"/>.
         /// </summary>
         [Language]
-        [Export]
         public string textLanguageCode = System.Globalization.CultureInfo.CurrentCulture.Name;
         public override LocalizedLine GetLocalizedLine(Yarn.Line line) {
             var text = YarnProject.GetLocalization(textLanguageCode).GetLocalizedString(line.ID);
@@ -20,7 +19,7 @@ namespace Yarn.GodotYarn {
                 TextID = line.ID,
                 RawText = text,
                 Substitutions = line.Substitutions,
-                // Metadata = YarnProject.lineMetadata.GetMetadata(line.ID),
+                Metadata = YarnProject.lineMetadata.GetMetadata(line.ID),
             };
         }
 

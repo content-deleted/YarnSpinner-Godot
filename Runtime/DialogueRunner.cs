@@ -7,16 +7,18 @@ using System.Linq;
 namespace Yarn.GodotYarn {
     [Tool/*, GlobalClass*/]
     public partial class DialogueRunner : Control {
-        internal enum CommandDispatchResult {
-            Success,
-            Failed,
-            NotFound,
-        }
-
+        /// <summary>
+        /// The <see cref="YarnProject"/> asset that should be loaded on
+        /// scene start.
+        /// </summary>
         [Export]
         public YarnProject yarnProject;
-        internal VariableStorageBehaviour _variableStorage;
+        /// <summary>
+        /// The variable storage object.
+        /// </summary>
+        [Export] VariableStorageBehaviour _variableStorage;
 
+        /// <inheritdoc cref="_variableStorage"/>
         public VariableStorageBehaviour VariableStorage {
             get => _variableStorage;
             set {
@@ -29,20 +31,45 @@ namespace Yarn.GodotYarn {
 
         [Export] private NodePath[] views = new NodePath[0];
 
-        public DialogueViewBase[] dialogueViews;
+        /// <summary>
+        /// The View classes that will present the dialogue to the user.
+        /// </summary>
+        public DialogueViewBase[] dialogueViews = new DialogueViewBase[0];
 
+        /// <summary>The name of the node to start from.</summary>
+        /// <remarks>
+        /// This value is used to select a node to start from when <see
+        /// cref="startAutomatically"/> is called.
+        /// </remarks>
         [Export] public string startNode = Yarn.Dialogue.DefaultStartNodeName;
 
+        /// <summary>
+        /// Whether the DialogueRunner should automatically start running
+        /// dialogue after the scene loads.
+        /// </summary>
+        /// <remarks>
+        /// The node specified by <see cref="startNode"/> will be used.
+        /// </remarks>
         [Export] public bool startAutomatically = true;
 
-        [Export] public bool automaticallyContinueLines;
-
+        /// <summary>
+        /// If true, when an option is selected, it's as though it were a
+        /// line.
+        /// </summary>
         public bool runSelectedOptionAsLine;
 
         [Export] public LineProviderBehaviour lineProvider;
 
+        /// <summary>
+        /// If true, will print <see cref="GD.Print"/> messages every time it enters a
+        /// node, and other frequent events.
+        /// </summary>
         [Export] public bool verboseLogging = true;
 
+        /// <summary>
+        /// Gets a value that indicates if the dialogue is actively
+        /// running.
+        /// </summary>
         public bool IsDialogueRunning { get; set; }
 
         /// <summary>
@@ -110,23 +137,55 @@ namespace Yarn.GodotYarn {
         [Signal]
         public delegate void onCommandEventHandler(string str);
 
+        /// <summary>
+        /// Gets the name of the current node that is being run.
+        /// </summary>
+        /// <seealso cref="Dialogue.currentNode"/>
         public string CurrentNodeName => Dialogue.CurrentNode;
 
+        /// <summary>
+        /// Gets the underlying <see cref="Dialogue"/> object that runs the
+        /// Yarn code.
+        /// </summary>
         public Yarn.Dialogue Dialogue => _dialogue ?? (_dialogue = CreateDialogueInstance());
 
+        /// <summary>
+        /// A flag used to detect if an options handler attempts to set the
+        /// selected option on the same frame that options were provided.
+        /// </summary>
+        /// <remarks>
+        /// This field is set to false by <see
+        /// cref="HandleOptions(OptionSet)"/> immediately before calling
+        /// <see cref="DialogueViewBase.RunOptions(DialogueOption[],
+        /// Action{int})"/> on all objects in <see cref="dialogueViews"/>,
+        /// and set to true immediately after. If a call to <see
+        /// cref="DialogueViewBase.RunOptions(DialogueOption[],
+        /// Action{int})"/> calls its completion hander on the same frame,
+        /// an error is generated.
+        /// </remarks>
         private bool IsOptionSelectionAllowed = false;
 
         private List<IEnumerator> coroutines = new List<IEnumerator>();
 
+        /// <summary>
+        /// Replaces this DialogueRunner's yarn project with the provided
+        /// project.
+        /// </summary>
         public void SetProject(YarnProject newProject) {
-            // Load all of the commands and functions from the assemblies that
-            // this project wants to load from.
-            ActionManager.AddActionsFromAssemblies(newProject.searchAssembliesForActions);
+            CommandDispatcher.SetupForProject(newProject);
 
-            Dialogue.SetProgram(newProject.GetProgram());
-            lineProvider.YarnProject = newProject;
+            Dialogue.SetProgram(newProject.Program);
+
+            if(lineProvider != null) {
+                lineProvider.YarnProject = newProject;
+            }
         }
 
+        /// <summary>
+        /// Loads any initial variables declared in the program and loads that variable with its default declaration value into the variable storage.
+        /// Any variable that is already in the storage will be skipped, the assumption is that this means the value has been overridden at some point and shouldn't be otherwise touched.
+        /// Can force an override of the existing values with the default if that is desired.
+        /// </summary>
         public void SetInitialVariables(bool overrideExistingValues = false) {
             if (yarnProject == null) {
                 GD.PrintErr("Unable to set default values, there is no project set");
@@ -135,7 +194,7 @@ namespace Yarn.GodotYarn {
 
             // grabbing all the initial values from the program and inserting them into the storage
             // we first need to make sure that the value isn't already set in the storage
-            var values = yarnProject.GetProgram().InitialValues;
+            var values = yarnProject.Program.InitialValues;
             foreach (var pair in values) {
                 if (overrideExistingValues == false && VariableStorage.Contains(pair.Key)) {
                     continue;
@@ -162,7 +221,7 @@ namespace Yarn.GodotYarn {
             }
         }
 
-        private IEnumerator StartCoroutine(IEnumerator enumerator) {
+        public IEnumerator StartCoroutine(IEnumerator enumerator) {
             if (enumerator.MoveNext()) {
                 coroutines.Add(enumerator);
             }
@@ -176,16 +235,21 @@ namespace Yarn.GodotYarn {
             }
 
             List<IEnumerator> dead = new List<IEnumerator>();
-            foreach (var c in coroutines) {
+
+            for(int i = 0; i < coroutines.Count; ++i) {
+                IEnumerator c = coroutines[i];
+
+                if(c == null) continue;
+
                 var sec = c.Current as WaitForSeconds;
-                if (sec != null) {
-                    if (sec.Tick(delta)) {
-                        if (!c.MoveNext()) {
+                if(sec != null) {
+                    if(sec.Tick(delta)) {
+                        if(c.MoveNext() == false) {
                             dead.Add(c);
                         }
                     }
                 }
-                else if (!c.MoveNext()) {
+                else if(c.MoveNext() == false) {
                     dead.Add(c);
                 }
             }
@@ -260,6 +324,17 @@ namespace Yarn.GodotYarn {
             ContinueDialogue();
         }
 
+        /// <summary>
+        /// Starts running the dialogue again.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="nodeName"/> is null, the node specified by
+        /// <see cref="startNode"/> is attempted, followed the currently
+        /// running node. If none of these options are available, an <see
+        /// cref="ArgumentNullException"/> is thrown.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">Thrown when a node to
+        /// restart the dialogue from cannot be found.</exception>
         [Obsolete("Use " + nameof(StartDialogue) + "(nodeName) instead.")]
         public void ResetDialogue(string nodeName = null) {
             nodeName = nodeName ?? startNode ?? CurrentNodeName ?? throw new ArgumentNullException($"Cannot reset dialogue: couldn't figure out a node to restart the dialogue from.");
@@ -267,156 +342,39 @@ namespace Yarn.GodotYarn {
             StartDialogue(nodeName);
         }
 
+        /// <summary>
+        /// Unloads all nodes from the <see cref="Dialogue"/>.
+        /// </summary>
         public void Clear() {
-
-            //Assert.IsFalse(IsDialogueRunning, "You cannot clear the dialogue system while a dialogue is running.");
+            System.Diagnostics.Debug.Assert(IsDialogueRunning == false, "You cannot clear the dialogue system while a dialogue is running.");
             Dialogue.UnloadAll();
         }
 
+        /// <summary>
+        /// Stops the <see cref="Dialogue"/>.
+        /// </summary>
         public void Stop() {
             IsDialogueRunning = false;
             Dialogue.Stop();
         }
 
+        /// <summary>
+        /// Returns `true` when a node named `nodeName` has been loaded.
+        /// </summary>
+        /// <param name="nodeName">The name of the node.</param>
+        /// <returns>`true` if the node is loaded, `false`
+        /// otherwise/</returns>
         public bool NodeExists(string nodeName) => Dialogue.NodeExists(nodeName);
 
+        /// <summary>
+        /// Returns the collection of tags that the node associated with
+        /// the node named `nodeName`.
+        /// </summary>
+        /// <param name="nodeName">The name of the node.</param>
+        /// <returns>The collection of tags associated with the node, or
+        /// `null` if no node with that name exists.</returns>
         public IEnumerable<string> GetTagsForNode(String nodeName) => Dialogue.GetTagsForNode(nodeName);
 
-        private void AddCommandHandler(string commandName, Delegate handler) {
-            if (commandHandlers.ContainsKey(commandName)) {
-                GD.PrintErr($"Cannot add a command handler for {commandName}: one already exists");
-                return;
-            }
-
-            commandHandlers.Add(commandName, handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler(string commandName, System.Func<IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1>(string commandName, System.Func<T1, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2>(string commandName, System.Func<T1, T2, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3>(string commandName, System.Func<T1, T2, T3, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4>(string commandName, System.Func<T1, T2, T3, T4, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4, T5>(string commandName, System.Func<T1, T2, T3, T4, T5, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4, T5, T6>(string commandName, System.Func<T1, T2, T3, T4, T5, T6, IEnumerator> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler(string commandName, System.Action handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1>(string commandName, System.Action<T1> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2>(string commandName, System.Action<T1, T2> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3>(string commandName, System.Action<T1, T2, T3> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4>(string commandName, System.Action<T1, T2, T3, T4> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4, T5>(string commandName, System.Action<T1, T2, T3, T4, T5> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        /// <inheritdoc cref="AddCommandHandler(string, Delegate)"/>
-        public void AddCommandHandler<T1, T2, T3, T4, T5, T6>(string commandName, System.Action<T1, T2, T3, T4, T5, T6> handler) {
-            AddCommandHandler(commandName, (Delegate)handler);
-        }
-
-        public void RemoveCommandHandler(string commandName) {
-            commandHandlers.Remove(commandName);
-        }
-
-        private void AddFunction(string name, Delegate implementation) {
-            if (Dialogue.Library.FunctionExists(name)) {
-                GD.PrintErr($"Cannot add function {name}: one already exists");
-                return;
-            }
-
-            Dialogue.Library.RegisterFunction(name, implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction(string, Delegate)" />
-        /// <typeparam name="TResult">The type of the value that the function should return.</typeparam>
-        public void AddFunction<TResult>(string name, System.Func<TResult> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult}(string, Func{TResult})" />
-        /// <typeparam name="T1">The type of the first parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1>(string name, System.Func<TResult, T1> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult,T1}(string, Func{TResult,T1})" />
-        /// <typeparam name="T2">The type of the second parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1, T2>(string name, System.Func<TResult, T1, T2> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult,T1,T2}(string, Func{TResult,T1,T2})" />
-        /// <typeparam name="T3">The type of the third parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1, T2, T3>(string name, System.Func<TResult, T1, T2, T3> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult,T1,T2,T3}(string, Func{TResult,T1,T2,T3})" />
-        /// <typeparam name="T4">The type of the fourth parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1, T2, T3, T4>(string name, System.Func<TResult, T1, T2, T3, T4> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult,T1,T2,T3,T4}(string, Func{TResult,T1,T2,T3,T4})" />
-        /// <typeparam name="T5">The type of the fifth parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1, T2, T3, T4, T5>(string name, System.Func<TResult, T1, T2, T3, T4, T5> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        /// <inheritdoc cref="AddFunction{TResult,T1,T2,T3,T4,T5}(string, Func{TResult,T1,T2,T3,T4,T5})" />
-        /// <typeparam name="T6">The type of the sixth parameter to the function.</typeparam>
-        public void AddFunction<TResult, T1, T2, T3, T4, T5, T6>(string name, System.Func<TResult, T1, T2, T3, T4, T5, T6> implementation) {
-            AddFunction(name, (Delegate)implementation);
-        }
-
-        public void RemoveFunction(string name) => Dialogue.Library.DeregisterFunction(name);
 
         /// <summary>
         /// Sets the dialogue views and makes sure the callback <see cref="DialogueViewBase.MarkLineComplete"/>
@@ -438,8 +396,16 @@ namespace Yarn.GodotYarn {
 
         #region Private Properties/Variables/Procedures
 
+        /// <summary>
+        /// The <see cref="LocalizedLine"/> currently being displayed on
+        /// the dialogue views.
+        /// </summary>
         internal LocalizedLine CurrentLine { get; private set; }
 
+        /// <summary>
+        ///  The collection of dialogue views that are currently either
+        ///  delivering a line, or dismissing a line from being on screen.
+        /// </summary>
         private readonly HashSet<DialogueViewBase> ActiveDialogueViews = new HashSet<DialogueViewBase>();
 
         Action<int> selectAction;
@@ -447,8 +413,22 @@ namespace Yarn.GodotYarn {
         /// Maps the names of commands to action delegates.
         Dictionary<string, Delegate> commandHandlers = new Dictionary<string, Delegate>();
 
+        /// <summary>
+        /// The underlying object that executes Yarn instructions
+        /// and provides lines, options and commands.
+        /// </summary>
+        /// <remarks>
+        /// Automatically created on first access.
+        /// </remarks>
         private Yarn.Dialogue _dialogue;
 
+        /// <summary>
+        /// The current set of options that we're presenting.
+        /// </summary>
+        /// <remarks>
+        /// This value is <see langword="null"/> when the <see
+        /// cref="DialogueRunner"/> is not currently presenting options.
+        /// </remarks>
         private Yarn.OptionSet currentOptions;
 
         public override void _Ready() {
@@ -494,15 +474,8 @@ namespace Yarn.GodotYarn {
                     GD.PrintErr($"DialogueRunner wanted to load a Yarn Project in its Start method, but the Dialogue was already running one. The Dialogue Runner may not behave as you expect.");
                 }
 
-                // Load all of the commands and functions from the assemblies
-                // that this project wants to load from.
-                ActionManager.AddActionsFromAssemblies(yarnProject.searchAssembliesForActions);
-
-                Dialogue.SetProgram(yarnProject.GetProgram());
-
-                lineProvider.YarnProject = yarnProject;
-
-                SetInitialVariables();
+                // Load this new Yarn Project.
+                SetProject(yarnProject);
 
                 if (startAutomatically) {
                     StartDialogue(startNode);
@@ -528,33 +501,28 @@ namespace Yarn.GodotYarn {
             // variableStorage to it
             var dialogue = new Yarn.Dialogue(VariableStorage) {
                 // Set up the logging system.
-                LogDebugMessage = delegate (string message)
-                {
+                LogDebugMessage = delegate (string message) {
                     if (verboseLogging) {
                         GD.Print(message);
                     }
                 },
-                LogErrorMessage = delegate (string message)
-                {
+                LogErrorMessage = delegate (string message) {
                     GD.PrintErr(message);
                 },
 
                 LineHandler = HandleLine,
                 CommandHandler = HandleCommand,
                 OptionsHandler = HandleOptions,
-                NodeStartHandler = (node) =>
-                {
+                NodeStartHandler = (node) => {
                     EmitSignal("onNodeStart", node);
                 },
-                NodeCompleteHandler = (node) =>
-                {
+                NodeCompleteHandler = (node) => {
                     EmitSignal("onNodeComplete", node);
                 },
                 DialogueCompleteHandler = HandleDialogueComplete,
                 PrepareForLinesHandler = PrepareForLines
             };
 
-            ActionManager.RegisterFunctions(dialogue.Library);
             selectAction = SelectedOption;
             return dialogue;
         }
@@ -563,11 +531,25 @@ namespace Yarn.GodotYarn {
             currentOptions = options;
 
             DialogueOption[] optionSet = new DialogueOption[options.Options.Length];
-            for (int i = 0; i < options.Options.Length; i++) {
+            for (int i = 0; i < options.Options.Length; ++i) {
                 // Localize the line associated with the option
                 var localisedLine = lineProvider.GetLocalizedLine(options.Options[i].Line);
                 var text = Yarn.Dialogue.ExpandSubstitutions(localisedLine.RawText, options.Options[i].Line.Substitutions);
-                localisedLine.Text = Dialogue.ParseMarkup(text);
+
+                Dialogue.LanguageCode = lineProvider.LocaleCode;
+
+                try {
+                    localisedLine.Text = Dialogue.ParseMarkup(text);
+                }
+                catch(Yarn.Markup.MarkupParseException e) {
+                    // Parsing the markup failed. We'll log a warning, and
+                    // produce a markup result that just contains the raw text.
+                    GD.PushWarning($"Failed to parse markup in \"{text}\": {e.Message}");
+                    localisedLine.Text = new Yarn.Markup.MarkupParseResult {
+                        Text = text,
+                        Attributes = new List<Markup.MarkupAttribute>()
+                    };
+                }
 
                 optionSet[i] = new DialogueOption {
                     TextID = options.Options[i].Line.ID,
@@ -602,40 +584,56 @@ namespace Yarn.GodotYarn {
         }
 
         void HandleCommand(Yarn.Command command) {
-            CommandDispatchResult dispatchResult;
+            GD.Print($"[HandleCommand] {command.Text}");
 
             // Try looking in the command handlers first
-            dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
+            // dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
+            CommandDispatchResult dispatchResult = CommandDispatcher.DispatchCommand(
+                command.Text,
+                out Delegate awaitCoroutine,
+                out object[] finalParametersToUse
+            );
 
-            if (dispatchResult != CommandDispatchResult.NotFound) {
-                // We found the command! We don't need to keep looking. (It may
-                // have succeeded or failed; if it failed, it logged something
-                // to the console or otherwise communicated to the developer
-                // that something went wrong. Either way, we don't need to do
-                // anything more here.)
-                return;
+            switch(dispatchResult.Status) {
+                case CommandDispatchResult.StatusType.SucceededSync: {
+                    // No need to wait; continue immediately
+                    ContinueDialogue();
+                    return;
+                }
+                case CommandDispatchResult.StatusType.SucceededAsync: {
+                    // We got a coroutine to wait for. Wait for it, and call
+                    // Continue.
+                    StartCoroutine(WaitForYieldInstruction(awaitCoroutine, finalParametersToUse, ContinueDialogue));
+                    break;
+                }
             }
 
-            // We didn't find it in the comand handlers. Try looking in the
-            // game objects. If it is, continue dialogue.
-            dispatchResult = DispatchCommandToGameObject(command, ContinueDialogue);
+            var parts = SplitCommandText(command.Text);
+            string commandName = parts.ElementAtOrDefault(0);
 
-            if (dispatchResult != CommandDispatchResult.NotFound) {
-                // As before: we found a handler for this command, so we stop
-                // looking.
-                return;
+            switch(dispatchResult.Status) {
+                case CommandDispatchResult.StatusType.NoTargetFound: {
+                    GD.PushError($"Can't call command {commandName}: failed to find a Node named {parts.ElementAtOrDefault(1)}", this);
+                    break;
+                }
+                case CommandDispatchResult.StatusType.TargetMissingComponent: {
+                    GD.PushError($"Can't call command {commandName}, because {parts.ElementAtOrDefault(1)} is not the right type of Node");
+                    break;
+                }
+                case CommandDispatchResult.StatusType.InvalidParameterCount: {
+                    GD.PushError($"Can't call command {commandName}: incorrect number of parameters");
+                    break;
+                }
+                case CommandDispatchResult.StatusType.CommandUnknown: {
+                    // Attempt a last-ditch dispatch by invoking our 'onCommand'
+                    // Unity Event.
+                    EmitSignal("onCommand", command.Text);
+                    return;
+                }
+                default:
+                    throw new ArgumentOutOfRangeException($"Internal error: Unknown command dispatch result status {dispatchResult}");
             }
 
-            // We didn't find a method in our C# code to invoke. Try invoking on
-            // the publicly exposed UnityEvent.
-            //
-            // We can only do this if our onCommand event is not null and would
-            // do something if we invoked it, so test this now.
-            EmitSignal("onCommand", command.Text);
-
-            // Whether we successfully handled it via the Unity Event or not,
-            // attempting to handle the command this way doesn't interrupt the
-            // dialogue, so we'll continue it now.
             ContinueDialogue();
         }
 
@@ -651,7 +649,7 @@ namespace Yarn.GodotYarn {
             var text = Yarn.Dialogue.ExpandSubstitutions(CurrentLine.RawText, CurrentLine.Substitutions);
 
             if (text == null) {
-                GD.PushWarning($"Dialogue Runner couldn't expand substitutions in Yarn Project [{ yarnProject.ProjectName }] node [{ CurrentNodeName }] with line ID [{ CurrentLine.TextID }]. "
+                GD.PushWarning($"Dialogue Runner couldn't expand substitutions in Yarn Project [{ yarnProject.ResourceName }] node [{ CurrentNodeName }] with line ID [{ CurrentLine.TextID }]. "
                     + "This usually happens because it couldn't find text in the Localization. The line may not be tagged properly. "
                     + "Try re-importing this Yarn Program. "
                     + "For now, Dialogue Runner will swap in CurrentLine.RawText.");
@@ -659,9 +657,20 @@ namespace Yarn.GodotYarn {
             }
 
             // Render the markup
-            CurrentLine.Text = Dialogue.ParseMarkup(text);
+            Dialogue.LanguageCode = lineProvider.LocaleCode;
 
-            CurrentLine.Status = LineStatus.Presenting;
+            try {
+                CurrentLine.Text = Dialogue.ParseMarkup(text);
+            }
+            catch (Yarn.Markup.MarkupParseException e) {
+                // Parsing the markup failed. We'll log a warning, and
+                // produce a markup result that just contains the raw text.
+                GD.PushWarning($"Failed to parse markup in \"{text}\": {e.Message}");
+                CurrentLine.Text = new Yarn.Markup.MarkupParseResult {
+                    Text = text,
+                    Attributes = new List<Markup.MarkupAttribute>()
+                };
+            }
 
             // Clear the set of active dialogue views, just in case
             ActiveDialogueViews.Clear();
@@ -676,13 +685,17 @@ namespace Yarn.GodotYarn {
 
             // Mark this dialogue view as active
             foreach (var dialogueView in dialogueViews) {
-                if (dialogueView == null || dialogueView.Visible == false) continue;
+                if (dialogueView == null || dialogueView.Visible == false) {
+                    continue;
+                }
 
                 ActiveDialogueViews.Add(dialogueView);
             }
             // Send line to all active dialogue views
             foreach (var dialogueView in dialogueViews) {
-                if (dialogueView == null || dialogueView.Visible == false) continue;
+                if (dialogueView == null || dialogueView.Visible == false) {
+                    continue;
+                }
 
                 dialogueView.RunLine(CurrentLine,
                     () => DialogueViewCompletedDelivery(dialogueView));
@@ -743,64 +756,6 @@ namespace Yarn.GodotYarn {
 
         }
 
-        CommandDispatchResult DispatchCommandToRegisteredHandlers(Yarn.Command command, Action onSuccessfulDispatch) {
-            return DispatchCommandToRegisteredHandlers(command.Text, onSuccessfulDispatch);
-        }
-
-        /// <inheritdoc cref="DispatchCommandToRegisteredHandlers(Command,
-        /// Action)"/>
-        /// <param name="command">The text of the command to
-        /// dispatch.</param>
-        internal CommandDispatchResult DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
-            var commandTokens = SplitCommandText(command).ToArray();
-
-            if (commandTokens.Length == 0) {
-                // Nothing to do.
-                return CommandDispatchResult.NotFound;
-            }
-
-            var firstWord = commandTokens[0];
-
-            if (commandHandlers.ContainsKey(firstWord) == false) {
-                // We don't have a registered handler for this command, but
-                // some other part of the game might.
-                return CommandDispatchResult.NotFound;
-            }
-
-            var @delegate = commandHandlers[firstWord];
-            var methodInfo = @delegate.Method;
-
-            object[] finalParameters;
-
-            try {
-                finalParameters = ActionManager.ParseArgs(methodInfo, commandTokens);
-            }
-            catch (ArgumentException e) {
-                GD.PrintErr($"Can't run command {firstWord}: {e.Message}");
-                return CommandDispatchResult.Failed;
-            }
-
-            if (typeof(IEnumerator).IsAssignableFrom(methodInfo.ReturnType)) {
-                // This delegate returns a YieldInstruction of some kind
-                // (e.g. a Coroutine). Run it, and wait for it to finish
-                // before calling onSuccessfulDispatch.
-                StartCoroutine(WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch));
-            }
-            else if (typeof(void) == methodInfo.ReturnType) {
-                // This method does not return anything. Invoke it and call
-                // our completion handler.
-                @delegate.DynamicInvoke(finalParameters);
-
-                onSuccessfulDispatch();
-            }
-            else {
-                GD.PrintErr($"Cannot run command {firstWord}: the provided delegate does not return a valid type (permitted return types are YieldInstruction or void)");
-                return CommandDispatchResult.Failed;
-            }
-
-            return CommandDispatchResult.Success;
-        }
-
         private static IEnumerator WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
             // Invoke the delegate.
             var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as IEnumerator;
@@ -812,50 +767,6 @@ namespace Yarn.GodotYarn {
 
             // Call the completion handler.
             onSuccessfulDispatch();
-        }
-
-        internal CommandDispatchResult DispatchCommandToGameObject(Yarn.Command command, Action onSuccessfulDispatch) {
-            // Call out to the string version of this method, because
-            // Yarn.Command's constructor is only accessible from inside
-            // Yarn Spinner, but we want to be able to unit test. So, we
-            // extract it, and call the underlying implementation, which is
-            // testable.
-            return DispatchCommandToGameObject(command.Text, onSuccessfulDispatch);
-        }
-
-        internal CommandDispatchResult DispatchCommandToGameObject(string command, System.Action onSuccessfulDispatch) {
-            if (string.IsNullOrEmpty(command)) {
-                throw new ArgumentException($"'{nameof(command)}' cannot be null or empty.", nameof(command));
-            }
-
-            if (onSuccessfulDispatch is null) {
-                throw new ArgumentNullException(nameof(onSuccessfulDispatch));
-            }
-
-            CommandDispatchResult commandExecutionResult = ActionManager.TryExecuteCommand(SplitCommandText(command).ToArray(), out object returnValue);
-            if (commandExecutionResult != CommandDispatchResult.Success) {
-                return commandExecutionResult;
-            }
-
-            var enumerator = returnValue as IEnumerator;
-
-            if (enumerator != null) {
-                // Start the coroutine. When it's done, it will continue execution.
-                StartCoroutine(DoYarnCommand(enumerator, onSuccessfulDispatch));
-            }
-            else {
-                // no coroutine, so we're done!
-                onSuccessfulDispatch();
-            }
-            return CommandDispatchResult.Success;
-
-            IEnumerator DoYarnCommand(IEnumerator source, Action onDispatch) {
-                // Wait for this command coroutine to complete
-                yield return StartCoroutine(source);
-
-                // And then signal that we're done
-                onDispatch();
-            }
         }
 
         private void PrepareForLines(IEnumerable<string> lineIDs) {

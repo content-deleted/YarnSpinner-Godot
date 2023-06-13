@@ -1,257 +1,167 @@
 using Godot;
-using System.Collections.Generic;
-using Yarn.Compiler;
+using Godot.Collections;
+using System.Reflection;
 using System.Linq;
-using System.IO;
-using System.Text;
-using System.Security.Cryptography;
 
 using FileAccess = Godot.FileAccess;
 
 namespace Yarn.GodotYarn {
     [Tool/*, GlobalClass, Icon("res://addons/YarnSpinner-Godot/Editor/Icons/YarnProject Icon.svg")*/]
     public partial class YarnProject : Resource {
-        public byte[] compiledYarnProgram;
-        public Localization baseLocalization;
-        public List<string> searchAssembliesForActions = new List<string>();
-        public List<Localization> localizations = new List<Localization>();
+        [Export] public byte[] compiledYarnProgram;
+        [Export] public Localization baseLocalization;
+        [Export] public Godot.Collections.Array<Localization> localizations = new Godot.Collections.Array<Localization>();
+        [Export] public LineMetadata lineMetadata;
+        [Export] public LocalizationType localizationType;
 
-        private string projectName = null;
-        private YarnScript[] sourceScripts = null;
-        private LanguageToSourceAsset[] languages = null;
-        private Declaration[] declarations = null;
 
-        private string defaultLanguage = null;
+        /// <summary>
+        /// The cached result of deserializing <see
+        /// cref="compiledYarnProgram"/>.
+        /// </summary>
+        private Program cachedProgram = null;
 
-        public YarnProject() {
+        /// <summary>
+        /// The names of assemblies that <see cref="ActionManager"/> should look
+        /// for commands and functions in when this project is loaded into a
+        /// <see cref="DialogueRunner"/>.
+        /// </summary>
+        [Export] private Array<string> searchAssembliesForActions = new Array<string>();
 
-        }
-
-        [Export]
-        public string ProjectName {
-            set {
-                projectName = value;
-                Compile();
+        /// <summary>
+        /// The names of all nodes contained within the <see cref="Program"/>.
+        /// </summary>
+        public string[] NodeNames {
+            get {
+                return Program.Nodes.Keys.ToArray();
             }
-            get { return projectName; }
         }
+
+
+        private YarnScript[] sourceScripts = null;
+
+        // private string defaultLanguage = null;
+
+        public YarnProject() {}
+#if TOOLS
+        [Signal] public delegate void onSourceScriptsChangedEventHandler(YarnScript[] scripts);
+#endif
+
 
         [Export]
         public YarnScript[] SourceScripts {
             set {
                 sourceScripts = value;
-                Compile();
+#if TOOLS
+                EmitSignal("onSourceScriptsChanged", value);
+#endif
+                // Compile();
             }
             get { return sourceScripts; }
         }
 
-        [Export]
-        public string DefaultLanguage {
-            set {
-                defaultLanguage = value;
-                Compile();
-            }
-            get { return defaultLanguage; }
-        }
+        /// <summary>
+        /// The cached result of reading the default values from the <see
+        /// cref="Program"/>.
+        /// </summary>
+        private System.Collections.Generic.Dictionary<string, System.IConvertible> initialValues;
 
-        [Export]
-        public LanguageToSourceAsset[] Languages {
-            set {
-                languages = value;
-                Compile();
-            }
-            get { return languages; }
-        }
-
-        [Export]
-        public Declaration[] Declarations {
-            set {
-                declarations = value;
-                Compile();
-            }
-            get { return declarations; }
-        }
-
-        private static byte[] GetHash(string inputString) {
-            using (HashAlgorithm algorithm = SHA256.Create()) {
-                return algorithm.ComputeHash(Encoding.UTF8.GetBytes(inputString));
-            }
-        }
-
-        internal static string GetHashString(string inputString, int limitCharacters = -1) {
-            var sb = new StringBuilder();
-            foreach (byte b in GetHash(inputString)) {
-                sb.Append(b.ToString("x2"));
-            }
-
-            if (limitCharacters == -1) {
-                // Return the entire string
-                return sb.ToString();
-            }
-            else {
-                // Return a substring (or the entire string, if
-                // limitCharacters is longer than the string)
-                return sb.ToString(0, Mathf.Min(sb.Length, limitCharacters));
-            }
-        }
-
-        private void Compile() {
-            if (sourceScripts == null || sourceScripts.Length == 0 || languages == null || defaultLanguage == null) {
-                return;
-            }
-
-            string content = "";
-            foreach (var s in sourceScripts) {
-                if(s == null) continue;
-
-                using(FileAccess access = FileAccess.Open(s.ResourcePath, FileAccess.ModeFlags.Read)) {
-                    content += access.GetAsText();
+        /// <summary>
+        /// The default values of all declared or inferred variables in the
+        /// <see cref="Program"/>.
+        /// Organised by their name as written in the yarn files.
+        /// </summary>
+        public System.Collections.Generic.Dictionary<string, System.IConvertible> InitialValues {
+            get {
+                if (initialValues != null) {
+                    return initialValues;
                 }
-            }
 
-            if(string.IsNullOrEmpty(content)) {
-                return;
-            }
+                initialValues = new System.Collections.Generic.Dictionary<string, System.IConvertible>();
 
-            // GD.Print(content);
-
-            var job = CompilationJob.CreateFromString(sourceScripts[0].ResourcePath, content);
-            if (declarations != null && declarations.Length > 0) {
-                var finalDec = new List<Yarn.Compiler.Declaration>();
-                Yarn.Compiler.Declaration v = new Yarn.Compiler.Declaration();
-                foreach (var dec in declarations) {
-                    switch (dec.Type) {
-                        case DeclarationType.STRING:
-                            v = Yarn.Compiler.Declaration.CreateVariable(dec.Name, Yarn.BuiltinTypes.String, dec.DefaultValue);
+                foreach (var pair in Program.InitialValues) {
+                    var value = pair.Value;
+                    switch (value.ValueCase) {
+                        case Yarn.Operand.ValueOneofCase.StringValue: {
+                            initialValues[pair.Key] = value.StringValue;
                             break;
-                        case DeclarationType.BOOLEAN:
-                            v = Yarn.Compiler.Declaration.CreateVariable(dec.Name, Yarn.BuiltinTypes.Boolean, bool.Parse(dec.DefaultValue));
+                        }
+                        case Yarn.Operand.ValueOneofCase.BoolValue: {
+                            initialValues[pair.Key] = value.BoolValue;
                             break;
-                        case DeclarationType.NUMBER:
-                            v = Yarn.Compiler.Declaration.CreateVariable(dec.Name, Yarn.BuiltinTypes.Number, float.Parse(dec.DefaultValue));
+                        }
+                        case Yarn.Operand.ValueOneofCase.FloatValue: {
+                            initialValues[pair.Key] = value.FloatValue;
                             break;
+                        }
+                        default: {
+                            GD.PushWarning($"{pair.Key} is of an invalid type: {value.ValueCase}");
+                            break;
+                        }
                     }
-
-                    finalDec.Add(v);
                 }
+                return initialValues;
+            }
+        }
 
-                job.VariableDeclarations = finalDec;
+        // ok assumption is that this can be lazy loaded and then kept around
+        // as not every node has headers you care about but some will and be read A LOT
+        // so we will fill a dict on request and just keep it around
+        // is somewhat unnecessary as people can get this out themselves if they want
+        // but I think peeps will wanna use headers like a dictionary
+        // so we will do the transformation for you
+        private Dictionary<string, Dictionary<string, Array<string>>>nodeHeaders = new Dictionary<string, Dictionary<string, Array<string>>>();
+
+        /// <summary>
+        /// Gets the headers for the requested node.
+        /// </summary>
+        /// <remarks>
+        /// The first time this is called, the values are extracted from
+        /// <see cref="Program"/> and cached inside <see cref="nodeHeaders"/>.
+        /// Future calls will then return the cached values.
+        /// </remarks>
+        public Dictionary<string, Array<string>> GetHeaders(string nodeName) {
+            // if the headers have already been extracted just return that
+            Dictionary<string, Array<string>> existingValues;
+
+            if (this.nodeHeaders.TryGetValue(nodeName, out existingValues)) {
+                return existingValues;
             }
 
-            CompilationResult compilationResult = Compiler.Compiler.Compile(job);
-            var errors = compilationResult.Diagnostics.Where(d => d.Severity == Diagnostic.DiagnosticSeverity.Error);
-
-            if (errors.Count() > 0) {
-                foreach (var error in errors) {
-                    GD.PrintErr(error);
-                }
-                return;
+            // headers haven't been extracted so we look inside the program
+            Node rawNode;
+            if (Program.Nodes.TryGetValue(nodeName, out rawNode) == false) {
+                return new Dictionary<string, Array<string>>();
             }
 
-            if (compilationResult.Program == null) {
-                GD.PrintErr("Internal error: Failed to compile: resulting program was null, but compiler did not report errors.");
-                return;
+            var rawHeaders = rawNode.Headers;
+
+            // this should NEVER happen
+            // because there will always be at least the title, right?
+            if (rawHeaders == null || rawHeaders.Count == 0) {
+                return new Dictionary<string, Array<string>>();
             }
 
-            using (var memoryStream = new MemoryStream())
-            using (var outputStream = new Google.Protobuf.CodedOutputStream(memoryStream)) {
-                // Serialize the compiled program to memory
-                compilationResult.Program.WriteTo(outputStream);
-                outputStream.Flush();
+            // ok so this is an array of (string, string) tuples
+            // with potentially duplicated keys inside the array
+            // we'll convert it all into a dict of string arrays
+            Dictionary<string, Array<string>> headers = new Dictionary<string, Array<string>>();
+            foreach (var pair in rawHeaders) {
+                Array<string> values;
 
-                compiledYarnProgram = memoryStream.ToArray();
-            }
-
-            foreach (var lang in languages) {
-                if (lang.LanguageID == string.Empty) {
-                    GD.PrintErr($"Not creating a localization for {projectName} because the language ID wasn't provided. Add the language ID to the localization in the Yarn Project's inspector.");
-                    continue;
-                }
-
-                GD.Print("Generating string file for language ", lang.LanguageID);
-
-                IEnumerable<StringTableEntry> stringTable;
-
-                // Where do we get our strings from? If it's the default
-                // language, we'll pull it from the scripts. If it's from
-                // any other source, we'll pull it from the CSVs.
-                if (lang.LanguageID == defaultLanguage) {
-                    // We'll use the program-supplied string table.
-                    stringTable = compilationResult.StringTable.Select(x => new StringTableEntry {
-                        ID = x.Key,
-                        Language = defaultLanguage,
-                        Text = x.Value.text,
-                        File = x.Value.fileName,
-                        Node = x.Value.nodeName,
-                        LineNumber = x.Value.lineNumber.ToString(),
-                        Lock = GetHashString(x.Value.text, 8),
-                    });
-
-                    // We don't need to add a default localization.
-                    //shouldAddDefaultLocalization = false;
+                if (headers.TryGetValue(pair.Key, out values)) {
+                    values.Add(pair.Value);
                 }
                 else {
-                    try {
-                        if (lang.StringFile == null) {
-                            // We can't create this localization because we
-                            // don't have any data for it.
-    #if TOOLS
-                            var temp = compilationResult.StringTable.Select(x => new StringTableEntry {
-                                ID = x.Key,
-                                Language = defaultLanguage,
-                                Text = x.Value.text,
-                                File = x.Value.fileName,
-                                Node = x.Value.nodeName,
-                                LineNumber = x.Value.lineNumber.ToString(),
-                                Lock = GetHashString(x.Value.text, 8),
-                            });
-
-                            string target = string.Empty;
-                            using(FileAccess access = FileAccess.Open(sourceScripts[0].ResourcePath, FileAccess.ModeFlags.Read)) {
-                                target = access.GetPathAbsolute();
-                            }
-                            GD.Print(target);
-
-                            target = target.Replace(".yarn", "(" + lang.LanguageID + ").csv.tres");
-
-                            GD.Print(target);
-
-                            GD.Print("Generate " + target);
-                            using (var writer = new StreamWriter(target)) {
-                                writer.WriteLine("language,id,text,file,node,lineNumber,lock,comment");
-                                foreach (var item in temp) {
-                                    writer.WriteLine($"{lang.LanguageID},{item.ID},{item.Text},{item.File},{item.Node},{item.LineNumber},{item.Lock},");
-                                }
-
-                                lang.StringFile = target;
-                            }
-    #else
-                            GD.PushWarning($"Not creating a localization for {lang.LanguageID} in the Yarn Project {projectName} because a text asset containing the strings wasn't found. Add a .csv file containing the translated lines to the Yarn Project's inspector.");
-                            continue;
-    #endif
-                        }
-
-                        using(FileAccess access = FileAccess.Open(lang.StringFile, FileAccess.ModeFlags.Read)) {
-                            string source = access.GetAsText();
-                            stringTable = StringTableEntry.ParseFromCSV(source);
-                        }
-                    }
-                    catch (System.ArgumentException e) {
-                        GD.PushWarning($"Not creating a localization for {lang.LanguageID} in the Yarn Project {projectName} because an error was encountered during text parsing: {e}");
-                        continue;
-                    }
+                    values = new Array<string>();
+                    values.Add(pair.Value);
                 }
-
-                var newLocalization = new Localization();
-                newLocalization.LocaleCode = lang.LanguageID;
-                newLocalization.AddLocalizedStrings(stringTable);
-                localizations.Add(newLocalization);
-
-                if (lang.LanguageID == defaultLanguage) {
-                    // If this is our default language, set it as such
-                    baseLocalization = newLocalization;
-                }
+                headers[pair.Key] = values;
             }
+
+            // this.nodeHeaders[nodeName] = headers;
+
+            return headers;
         }
 
         public Localization GetLocalization(string localeCode) {
@@ -272,11 +182,32 @@ namespace Yarn.GodotYarn {
         }
 
         /// <summary>
-        /// Deserializes a compiled Yarn program from the stored bytes in
-        /// this object.
+        /// Gets the Yarn Program stored in this project.
         /// </summary>
-        public Yarn.Program GetProgram() {
-            return Yarn.Program.Parser.ParseFrom(compiledYarnProgram);
+        [System.Obsolete("Use the Program property instead, which caches its return value.")]
+        public Program GetProgram() {
+            return Program.Parser.ParseFrom(compiledYarnProgram);
         }
+
+        /// <summary>
+        /// Gets the Yarn Program stored in this project.
+        /// </summary>
+        /// <remarks>
+        /// The first time this is called, the program stored in <see
+        /// cref="compiledYarnProgram"/> is deserialized and cached. Future
+        /// calls to this method will return the cached value.
+        /// </remarks>
+        public Program Program {
+            get {
+                if(cachedProgram == null) {
+                    cachedProgram = Program.Parser.ParseFrom(compiledYarnProgram);
+                }
+                return cachedProgram;
+            }
+        }
+    }
+
+    public enum LocalizationType {
+        YarnInternal, Godot
     }
 }

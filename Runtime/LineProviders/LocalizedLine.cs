@@ -1,3 +1,5 @@
+using Godot;
+
 namespace Yarn.GodotYarn {
     public class LocalizedLine {
         /// <summary>
@@ -16,9 +18,9 @@ namespace Yarn.GodotYarn {
         public string RawText;
 
         /// <summary>
-        /// The line's delivery status.
+        /// Any metadata associated with this line.
         /// </summary>
-        public LineStatus Status;
+        public string[] Metadata;
 
         /// <summary>
         /// The name of the character, if present.
@@ -37,6 +39,11 @@ namespace Yarn.GodotYarn {
                 return null;
             }
         }
+
+        /// <summary>
+        /// The asset associated with this line, if any.
+        /// </summary>
+        public GodotObject Asset;
 
         /// <summary>
         /// The underlying <see cref="Yarn.Markup.MarkupParseResult"/> for

@@ -3,7 +3,7 @@ using System;
 using System.Collections;
 
 namespace Yarn.GodotYarn {
-    internal class DefaultActions {
+    public class DefaultActions {
         #region Commands
         /// <summary>
         /// Yarn Spinner defines two built-in commands: "wait", and "stop".
