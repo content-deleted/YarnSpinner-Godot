@@ -9,10 +9,13 @@ namespace Yarn.GodotYarn {
     [Tool/*, GlobalClass, Icon("res://addons/YarnSpinner-Godot/Editor/Icons/YarnProject Icon.svg")*/]
     public partial class YarnProject : Resource {
         [Export] public byte[] compiledYarnProgram;
-        [Export] public Localization baseLocalization = new Localization(System.Globalization.CultureInfo.CurrentCulture.Name);
-        [Export] public Godot.Collections.Array<Localization> localizations = new Godot.Collections.Array<Localization>();
+        [Export] public Localization baseLocalization;
+
+        [Export] public Localization[] localizations = new Localization[0];
         [Export] public LineMetadata lineMetadata;
         [Export] public LocalizationType localizationType;
+
+        [Export] public Declaration[] declarations = new Declaration[0];
 
 
         /// <summary>
@@ -42,7 +45,9 @@ namespace Yarn.GodotYarn {
 
         // private string defaultLanguage = null;
 
-        public YarnProject() {}
+        public YarnProject() {
+            baseLocalization = new Localization();
+        }
 
         [Export]
         public YarnScript[] SourceScripts {

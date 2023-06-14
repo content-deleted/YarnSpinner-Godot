@@ -18,8 +18,8 @@ namespace Yarn.GodotYarn.Editor {
 
             switch(name) {
                 case "SourceScripts":
-                    // AddPropertyEditor(name, new SourceScriptsEditorProperty());
-                    return false;
+                    AddPropertyEditor(name, new SourceScriptsEditorProperty());
+                    return true;
                 case "baseLocalization":
                     AddPropertyEditor(name, new LocalizationPopupEditorProperty());
                     return true;

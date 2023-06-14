@@ -6,15 +6,14 @@ namespace Yarn.GodotYarn.Editor {
         private MenuButton _menuBar = new MenuButton();
 
         public LocalizationPopupEditorProperty() {
-
-
+            foreach(var c in Cultures.GetCultures()) {
+                _menuBar.GetPopup().AddItem($"{c.DisplayName}:({c.Name})");
+            }
             AddChild(_menuBar);
 
             _menuBar.GetPopup().IdPressed += OnIdPressed;
 
-            foreach(var c in Cultures.GetCultures()) {
-                _menuBar.GetPopup().AddItem($"{c.DisplayName}:({c.Name})");
-            }
+            UpdateProperty();
         }
 
         private void OnIdPressed(long id) {
@@ -27,9 +26,7 @@ namespace Yarn.GodotYarn.Editor {
             localeCode = localeCode.Trim('(');
             localeCode = localeCode.Trim(')');
 
-            Localization localization = new Localization(localeCode);
-
-            this.GetEditedObject().Set(this.GetEditedProperty(), localization);
+            this.GetEditedObject().Get(this.GetEditedProperty()).AsGodotObject().Set("_localeCode", localeCode);
         }
 
         public override void _UpdateProperty() {
@@ -46,7 +43,8 @@ namespace Yarn.GodotYarn.Editor {
             var prop = obj.Get(this.GetEditedProperty()).AsGodotObject();
 
             if(prop == null) {
-                this._menuBar.Text = nullText;
+                Localization loc = new Localization();
+                this.GetEditedObject().Set(this.GetEditedProperty(), loc);
                 return;
             }
 
