@@ -9,7 +9,7 @@ namespace Yarn.GodotYarn {
     [Tool/*, GlobalClass, Icon("res://addons/YarnSpinner-Godot/Editor/Icons/YarnProject Icon.svg")*/]
     public partial class YarnProject : Resource {
         [Export] public byte[] compiledYarnProgram;
-        [Export] public Localization baseLocalization;
+        [Export] public Localization baseLocalization = new Localization(System.Globalization.CultureInfo.CurrentCulture.Name);
         [Export] public Godot.Collections.Array<Localization> localizations = new Godot.Collections.Array<Localization>();
         [Export] public LineMetadata lineMetadata;
         [Export] public LocalizationType localizationType;

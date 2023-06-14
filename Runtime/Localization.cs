@@ -10,6 +10,14 @@ namespace Yarn.GodotYarn {
     using Node = Godot.Node;
 
     public partial class Localization : Resource {
+        public Localization() {
+            this._localeCode = System.Globalization.CultureInfo.CurrentCulture.Name;
+        }
+
+        public Localization(string localeCode) {
+            this._localeCode = localeCode;
+        }
+
         /// <summary>
         /// Returns the address that should be used to fetch an asset suitable
         /// for a specific line in a specific language.

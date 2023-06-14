@@ -16,14 +16,12 @@ namespace Yarn.GodotYarn.Editor {
         public override bool _ParseProperty(GodotObject targetObject, Variant.Type type, string name, PropertyHint hintType, string hintString, PropertyUsageFlags usageFlags, bool wide) {
             // GD.Print(name);
 
-            GD.Print(name);
-
             switch(name) {
                 case "SourceScripts":
                     // AddPropertyEditor(name, new SourceScriptsEditorProperty());
                     return false;
                 case "baseLocalization":
-                    AddPropertyEditor(name, new LanguagePopupEditorProperty());
+                    AddPropertyEditor(name, new LocalizationPopupEditorProperty());
                     return true;
             }
 
