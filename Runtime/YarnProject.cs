@@ -29,7 +29,7 @@ namespace Yarn.GodotYarn {
         /// for commands and functions in when this project is loaded into a
         /// <see cref="DialogueRunner"/>.
         /// </summary>
-        [Export] private Array<string> searchAssembliesForActions = new Array<string>();
+        [Export] public string[] searchAssembliesForActions = new string[0];
 
         /// <summary>
         /// The names of all nodes contained within the <see cref="Program"/>.
@@ -41,7 +41,7 @@ namespace Yarn.GodotYarn {
         }
 
 
-        private YarnScript[] sourceScripts = null;
+        private string[] sourceScripts = null;
 
         // private string defaultLanguage = null;
 
@@ -49,8 +49,8 @@ namespace Yarn.GodotYarn {
             baseLocalization = new Localization();
         }
 
-        [Export]
-        public YarnScript[] SourceScripts {
+        [Export(PropertyHint.File, "*.yarn")]
+        public string[] SourceScripts {
             set {
                 sourceScripts = value;
 

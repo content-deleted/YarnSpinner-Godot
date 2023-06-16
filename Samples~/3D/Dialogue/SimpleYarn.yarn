@@ -1,11 +1,13 @@
 title: SimpleYarn
 tags:
 ---
+<<wait 3>>
+
 A: This is a line of text
 
-// <<wait 3>>
 
 B: This is another line of text
+<<wait 3>>
 
 <<this is a command>>
 

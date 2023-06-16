@@ -20,7 +20,11 @@ namespace Yarn.GodotYarn {
             foreach (var s in project.SourceScripts) {
                 if(s == null) continue;
 
-                using(FileAccess access = FileAccess.Open(s.ResourcePath, FileAccess.ModeFlags.Read)) {
+                if(FileAccess.FileExists(s) == false) {
+                    continue;
+                }
+
+                using(FileAccess access = FileAccess.Open(s, FileAccess.ModeFlags.Read)) {
                     content += access.GetAsText();
                 }
             }

@@ -14,6 +14,9 @@ namespace Yarn.GodotYarn {
 
         public bool Tick(double t) {
             _timer += t;
+
+            // GD.Print($"Timer: {_timer} Duration: {_duration}");
+
             if (_timer >= _duration) {
                 _timer -= _duration;
                 return true;

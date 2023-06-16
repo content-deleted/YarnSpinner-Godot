@@ -13,6 +13,7 @@ namespace Yarn.GodotYarn {
         /// </summary>
         [Export]
         public YarnProject yarnProject;
+
         /// <summary>
         /// The variable storage object.
         /// </summary>
@@ -172,7 +173,12 @@ namespace Yarn.GodotYarn {
         /// project.
         /// </summary>
         public void SetProject(YarnProject newProject) {
-            CommandDispatcher.SetupForProject(newProject);
+            // Load all of the commands and functions from the assemblies that
+            // this project wants to load from.
+            ActionManager.AddActionsFromAssemblies(newProject.searchAssembliesForActions);
+
+            // Register any new functions that we found as part of doing this.
+            ActionManager.RegisterFunctions(Dialogue.Library);
 
             Dialogue.SetProgram(newProject.Program);
 
@@ -586,54 +592,37 @@ namespace Yarn.GodotYarn {
         void HandleCommand(Yarn.Command command) {
             GD.Print($"[HandleCommand] {command.Text}");
 
+            CommandDispatchResult dispatchResult;
+
             // Try looking in the command handlers first
-            // dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
-            CommandDispatchResult dispatchResult = CommandDispatcher.DispatchCommand(
-                command.Text,
-                out Delegate awaitCoroutine,
-                out object[] finalParametersToUse
-            );
+            dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
 
-            switch(dispatchResult.Status) {
-                case CommandDispatchResult.StatusType.SucceededSync: {
-                    // No need to wait; continue immediately
-                    ContinueDialogue();
-                    return;
-                }
-                case CommandDispatchResult.StatusType.SucceededAsync: {
-                    // We got a coroutine to wait for. Wait for it, and call
-                    // Continue.
-                    StartCoroutine(WaitForYieldInstruction(awaitCoroutine, finalParametersToUse, ContinueDialogue));
-                    break;
-                }
+            if(dispatchResult != CommandDispatchResult.NotFound) {
+                // We found the command! We don't need to keep looking. (It may
+                // have succeeded or failed; if it failed, it logged something
+                // to the console or otherwise communicated to the developer
+                // that something went wrong. Either way, we don't need to do
+                // anything more here.)
+                return;
             }
 
-            var parts = SplitCommandText(command.Text);
-            string commandName = parts.ElementAtOrDefault(0);
+            // We didn't find it in the comand handlers. Try looking in the
+            // game objects. If it is, continue dialogue.
+            dispatchResult = DispatchCommandToGameObject(command, ContinueDialogue);
 
-            switch(dispatchResult.Status) {
-                case CommandDispatchResult.StatusType.NoTargetFound: {
-                    GD.PushError($"Can't call command {commandName}: failed to find a Node named {parts.ElementAtOrDefault(1)}", this);
-                    break;
-                }
-                case CommandDispatchResult.StatusType.TargetMissingComponent: {
-                    GD.PushError($"Can't call command {commandName}, because {parts.ElementAtOrDefault(1)} is not the right type of Node");
-                    break;
-                }
-                case CommandDispatchResult.StatusType.InvalidParameterCount: {
-                    GD.PushError($"Can't call command {commandName}: incorrect number of parameters");
-                    break;
-                }
-                case CommandDispatchResult.StatusType.CommandUnknown: {
-                    // Attempt a last-ditch dispatch by invoking our 'onCommand'
-                    // Unity Event.
-                    EmitSignal("onCommand", command.Text);
-                    return;
-                }
-                default:
-                    throw new ArgumentOutOfRangeException($"Internal error: Unknown command dispatch result status {dispatchResult}");
+            if (dispatchResult != CommandDispatchResult.NotFound) {
+                // As before: we found a handler for this command, so we stop
+                // looking.
+                return;
             }
 
+            // We didn't find a method in our C# code to invoke. Try invoking on
+            // the publicly exposed Godot Signal.
+            EmitSignal("onCommand", command.Text);
+
+            // Whether we successfully handled it via the Godot Signal or not,
+            // attempting to handle the command this way doesn't interrupt the
+            // dialogue, so we'll continue it now.
             ContinueDialogue();
         }
 
@@ -753,20 +742,137 @@ namespace Yarn.GodotYarn {
             else {
                 ContinueDialogue();
             }
+        }
 
+        /// <summary>
+        /// Parses the command string inside <paramref name="command"/>,
+        /// attempts to find a suitable handler from <see
+        /// cref="commandHandlers"/>, and invokes it if found.
+        /// </summary>
+        /// <param name="command">The <see cref="Command"/> to run.</param>
+        /// <param name="onSuccessfulDispatch">A method to run if a command
+        /// was successfully dispatched to a game object. This method is
+        /// not called if a registered command handler is not
+        /// found.</param>
+        /// <returns>True if the command was dispatched to a game object;
+        /// false otherwise.</returns>
+        CommandDispatchResult DispatchCommandToRegisteredHandlers(Command command, Action onSuccessfulDispatch) {
+            return DispatchCommandToRegisteredHandlers(command.Text, onSuccessfulDispatch);
+        }
+
+        /// <inheritdoc cref="DispatchCommandToRegisteredHandlers(Command,
+        /// Action)"/>
+        /// <param name="command">The text of the command to
+        /// dispatch.</param>
+        internal CommandDispatchResult DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
+            var commandTokens = SplitCommandText(command).ToArray();
+
+            if (commandTokens.Length == 0) {
+                // Nothing to do.
+                return CommandDispatchResult.NotFound;
+            }
+
+            var firstWord = commandTokens[0];
+
+            if (commandHandlers.ContainsKey(firstWord) == false) {
+                // We don't have a registered handler for this command, but
+                // some other part of the game might.
+                return CommandDispatchResult.NotFound;
+            }
+
+            var @delegate = commandHandlers[firstWord];
+            var methodInfo = @delegate.Method;
+
+            object[] finalParameters;
+
+            try {
+                finalParameters = ActionManager.ParseArgs(methodInfo, commandTokens);
+            }
+            catch (ArgumentException e) {
+                GD.PushError($"Can't run command {firstWord}: {e.Message}");
+                return CommandDispatchResult.Failed;
+            }
+
+            if (typeof(IEnumerator).IsAssignableFrom(methodInfo.ReturnType)) {
+                // This delegate returns a YieldInstruction of some kind
+                // (e.g. a Coroutine). Run it, and wait for it to finish
+                // before calling onSuccessfulDispatch.
+                StartCoroutine(WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch));
+            }
+            else if (typeof(void) == methodInfo.ReturnType) {
+                // This method does not return anything. Invoke it and call
+                // our completion handler.
+                @delegate.DynamicInvoke(finalParameters);
+
+                onSuccessfulDispatch();
+            }
+            else {
+                GD.PushError($"Cannot run command {firstWord}: the provided delegate does not return a valid type (permitted return types are YieldInstruction or void)");
+                return CommandDispatchResult.Failed;
+            }
+
+            return CommandDispatchResult.Success;
         }
 
         private static IEnumerator WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
             // Invoke the delegate.
             var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as IEnumerator;
 
+            GD.Print("Wait for yield");
+
             if (yieldInstruction.MoveNext()) {
                 // Yield on the return result.
                 yield return yieldInstruction.Current;
             }
 
+            GD.Print("Done yielding");
+
             // Call the completion handler.
             onSuccessfulDispatch();
+        }
+
+        internal CommandDispatchResult DispatchCommandToGameObject(Yarn.Command command, Action onSuccessfulDispatch) {
+            // Call out to the string version of this method, because
+            // Yarn.Command's constructor is only accessible from inside
+            // Yarn Spinner, but we want to be able to unit test. So, we
+            // extract it, and call the underlying implementation, which is
+            // testable.
+            return DispatchCommandToGameObject(command.Text, onSuccessfulDispatch);
+        }
+
+        internal CommandDispatchResult DispatchCommandToGameObject(string command, System.Action onSuccessfulDispatch) {
+            if (string.IsNullOrEmpty(command)) {
+                throw new ArgumentException($"'{nameof(command)}' cannot be null or empty.", nameof(command));
+            }
+
+            if (onSuccessfulDispatch is null) {
+                throw new ArgumentNullException(nameof(onSuccessfulDispatch));
+            }
+
+            CommandDispatchResult commandExecutionResult = ActionManager.TryExecuteCommand(SplitCommandText(command).ToArray(), out object returnValue);
+            if (commandExecutionResult != CommandDispatchResult.Success) {
+                return commandExecutionResult;
+            }
+
+            var enumerator = returnValue as IEnumerator;
+
+            if (enumerator != null) {
+                // Start the coroutine. When it's done, it will continue execution.
+                StartCoroutine(DoYarnCommand(enumerator, onSuccessfulDispatch));
+            }
+            else {
+                // no coroutine, so we're done!
+                onSuccessfulDispatch();
+            }
+            return CommandDispatchResult.Success;
+
+            IEnumerator DoYarnCommand(IEnumerator source, Action onDispatch) {
+                // Wait for this command coroutine to complete
+                yield return StartCoroutine(source);
+
+                // And then signal that we're done
+                onDispatch();
+            }
         }
 
         private void PrepareForLines(IEnumerable<string> lineIDs) {

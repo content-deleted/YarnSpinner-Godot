@@ -17,16 +17,16 @@ namespace Yarn.GodotYarn.Editor {
             // GD.Print(name);
 
             switch(name) {
+                case "searchAssembliesForActions":
                 case "SourceScripts":
                     // AddPropertyEditor(name, new SourceScriptsEditorProperty());
                     return false;
                 case "baseLocalization":
                     AddPropertyEditor(name, new LocalizationPopupEditorProperty());
                     return true;
+                default:
+                    return true;
             }
-
-
-            return true;
         }
     }
 }
