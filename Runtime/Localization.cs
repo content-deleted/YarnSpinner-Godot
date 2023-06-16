@@ -9,6 +9,7 @@ using System.Linq;
 namespace Yarn.GodotYarn {
     using Node = Godot.Node;
 
+    [Tool]
     public partial class Localization : Resource {
         public Localization() {
             this._localeCode = System.Globalization.CultureInfo.CurrentCulture.Name;
@@ -17,6 +18,9 @@ namespace Yarn.GodotYarn {
         public Localization(string localeCode) {
             this._localeCode = localeCode;
         }
+
+        [Export] private string _stringFile;
+        public string StringFile { get => _stringFile; set => _stringFile = value; }
 
         /// <summary>
         /// Returns the address that should be used to fetch an asset suitable
@@ -77,6 +81,9 @@ namespace Yarn.GodotYarn {
         #region Localized Strings
         public string GetLocalizedString(string key) {
             string result;
+
+            GD.Print(key);
+
             if (_runtimeStringTable.TryGetValue(key, out result)) {
                 return result;
             }
@@ -97,6 +104,7 @@ namespace Yarn.GodotYarn {
         /// for the given key; <see langword="false"/> otherwise.</returns>
         public bool ContainsLocalizedString(string key) => _runtimeStringTable.ContainsKey(key) || _stringTable.ContainsKey(key);
 
+#if TOOLS
         /// <summary>
         /// Adds a new string to the string table.
         /// </summary>
@@ -110,8 +118,29 @@ namespace Yarn.GodotYarn {
         /// <param name="value">The user-facing text for this string, in the
         /// language specified by <see cref="LocaleCode"/>.</param>
         internal void AddLocalizedStringToAsset(string key, string value) {
-            _stringTable.Add(key, value);
+            if(_stringTable.ContainsKey(key) == false) {
+                _stringTable.Add(key, value);
+            }
+            else {
+                _stringTable[key] = value;
+            }
+            this.EmitChanged();
         }
+
+        /// <summary>
+        /// Adds a collection of strings to the string table.
+        /// </summary>
+        /// <inheritdoc cref="AddLocalizedStringToAsset(string, string)"
+        /// path="/remarks"/>
+        /// <param name="strings">The collection of <see
+        /// cref="StringTableEntry"/> objects to add.</param>
+        internal void AddLocalizedStringsToAsset(IEnumerable<StringTableEntry> stringTableEntries) {
+            foreach (var entry in stringTableEntries) {
+                GD.Print("add " + entry.ID + ": " + entry.Text);
+                AddLocalizedStringToAsset(entry.ID, entry.Text);
+            }
+        }
+#endif
 
         /// <summary>
         /// Adds a new string to the runtime string table.
@@ -127,7 +156,12 @@ namespace Yarn.GodotYarn {
         /// <param name="value">The user-facing text for this string, in the
         /// language specified by <see cref="LocaleCode"/>.</param>
         public void AddLocalizedString(string key, string value) {
-            _runtimeStringTable.Add(key, value);
+            if(_runtimeStringTable.ContainsKey(key) == false) {
+                _runtimeStringTable.Add(key, value);
+            }
+            else {
+                _runtimeStringTable[key] = value;
+            }
         }
 
         /// <summary>
@@ -182,7 +216,12 @@ namespace Yarn.GodotYarn {
 
         public void AddLocalizedObjects<T>(IEnumerable<KeyValuePair<string, T>> objects) where T : GodotObject {
             foreach (var entry in objects) {
-                _assetTable.Add(entry.Key, entry.Value);
+                if(_assetTable.ContainsKey(entry.Key) == false) {
+                    _assetTable.Add(entry.Key, entry.Value);
+                }
+                else {
+                    _assetTable[entry.Key] = entry.Value;
+                }
             }
         }
         #endregion

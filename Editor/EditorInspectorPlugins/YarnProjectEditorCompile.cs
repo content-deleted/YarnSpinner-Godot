@@ -79,6 +79,10 @@ namespace Yarn.GodotYarn {
                 project.compiledYarnProgram = memoryStream.ToArray();
             }
 
+            if(project.localizations.Contains(project.baseLocalization) == false) {
+                project.localizations.Add(project.baseLocalization);
+            }
+
             foreach (var lang in project.localizations) {
                 if (lang.LocaleCode == string.Empty) {
                     GD.PrintErr($"Not creating a localization for {project.ResourceName} because the language ID wasn't provided. Add the language ID to the localization in the Yarn Project's inspector.");
@@ -95,6 +99,7 @@ namespace Yarn.GodotYarn {
                 if (lang.LocaleCode == project.baseLocalization.LocaleCode) {
                     // We'll use the program-supplied string table.
                     stringTable = compilationResult.StringTable.Select(x => new StringTableEntry {
+                        // ID = $"line:-{x.Value.nodeName}-{x.Value.lineNumber}",
                         ID = x.Key,
                         Language = project.baseLocalization.LocaleCode,
                         Text = x.Value.text,
@@ -137,13 +142,13 @@ namespace Yarn.GodotYarn {
                             using (var writer = new StreamWriter(target)) {
                                 writer.WriteLine("language,id,text,file,node,lineNumber,lock,comment");
                                 foreach (var item in temp) {
-                                    writer.WriteLine($"{lang.LanguageID},{item.ID},{item.Text},{item.File},{item.Node},{item.LineNumber},{item.Lock},");
+                                    writer.WriteLine($"{lang.LocaleCode},{item.ID},{item.Text},{item.File},{item.Node},{item.LineNumber},{item.Lock},");
                                 }
 
                                 lang.StringFile = target;
                             }
     #else
-                            GD.PushWarning($"Not creating a localization for {lang.LanguageID} in the Yarn Project {projectName} because a text asset containing the strings wasn't found. Add a .csv file containing the translated lines to the Yarn Project's inspector.");
+                            GD.PushWarning($"Not creating a localization for {lang.LocaleCode} in the Yarn Project {project.ResourceName} because a text asset containing the strings wasn't found. Add a .csv file containing the translated lines to the Yarn Project's inspector.");
                             continue;
     #endif
                         }
@@ -159,16 +164,21 @@ namespace Yarn.GodotYarn {
                     }
                 }
 
-                var newLocalization = new Localization();
-                newLocalization.LocaleCode = lang.LanguageID;
-                newLocalization.AddLocalizedStrings(stringTable);
-                localizations.Add(newLocalization);
 
-                if (lang.LocaleCode == defaultLanguage) {
+                if (lang.LocaleCode == project.baseLocalization.LocaleCode) {
                     // If this is our default language, set it as such
-                    baseLocalization = newLocalization;
+                    project.baseLocalization.Clear();
+                    project.baseLocalization.AddLocalizedStringsToAsset(stringTable);
+                }
+                else {
+                    var newLocalization = new Localization();
+                    newLocalization.LocaleCode = lang.LocaleCode;
+                    newLocalization.AddLocalizedStringsToAsset(stringTable);
+                    project.localizations.Add(newLocalization);
                 }
             }
+
+            return Error.Ok;
         }
 
 

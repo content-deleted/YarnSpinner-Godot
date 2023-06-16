@@ -6,40 +6,74 @@ namespace Yarn.GodotYarn.Editor {
     using Node = Godot.Node;
 
     public partial class SourceScriptsEditorProperty : EditorProperty {
-        public SourceScriptsEditorProperty() {
+        private VBoxContainer _verticalBox;
 
+        public SourceScriptsEditorProperty() {
+            _verticalBox = new VBoxContainer();
+            this.AddChild(_verticalBox);
         }
 
-        public override void _UpdateProperty() {
-            string nullText = "<null>";
-
+        private void AddResource() {
             GodotObject obj = this.GetEditedObject();
 
             if(obj == null) {
-                // this._menuBar.Text = nullText;
                 return;
             }
 
-            var prop = obj.Get(this.GetEditedProperty()).AsGodotObjectArray<YarnScript>();
+            var prop = obj.Get(this.GetEditedProperty()).AsGodotObjectArray<Resource>();
 
             if(prop == null) {
-                // this._menuBar.Text = nullText;
                 return;
             }
 
-            for(int i = 0; i < this.GetChildCount(); ++i) {
-                this.GetChild(i).Free();
+            // You can implement your own logic here to add a new resource to the array
+            // For demonstration purposes, I'm just adding a placeholder resource
+            Resource[] newProp = new Resource[prop.Length];
+            for(int i = 0; i < prop.Length; ++i) {
+                newProp[i] = prop[i];
+            }
+
+            prop = newProp;
+
+            obj.Set(this.GetEditedProperty(), prop);
+
+            // Emit the signal to notify the editor that the property has changed
+            // this.EmitChanged(this.GetEditedProperty(), newProp);
+            UpdateProperty();
+        }
+
+        public override void _UpdateProperty() {
+            GodotObject obj = this.GetEditedObject();
+
+            if(obj == null) {
+                return;
+            }
+
+            var prop = obj.Get(this.GetEditedProperty()).AsGodotObjectArray<Resource>();
+
+            if(prop == null) {
+                return;
+            }
+
+            for(int i = 0; i < _verticalBox.GetChildCount(); ++i) {
+                _verticalBox.GetChild(i).QueueFree();
             }
 
             for(int i = 0; i < prop.Length; ++i) {
                 GD.Print(prop[i].ResourceName);
 
-                LinkButton label = new LinkButton();
-                label.Text = prop[i].ResourceName;
-                label.Uri = prop[i].ResourcePath;
+                Label button = new Label();
+                button.Text = prop[i].ResourceName;
 
-                this.AddChild(label);
+                _verticalBox.AddChild(button);
             }
+
+            // Create a button to add a new resource to the array
+            Button _addButton = new Button();
+            _addButton.Text = "+";
+            _addButton.Pressed += AddResource;
+
+            _verticalBox.AddChild(_addButton);
         }
     }
 }

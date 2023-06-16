@@ -3,7 +3,7 @@ tags:
 ---
 A: This is a line of text
 
-<<wait 3>>
+// <<wait 3>>
 
 B: This is another line of text
 

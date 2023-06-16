@@ -11,7 +11,7 @@ namespace Yarn.GodotYarn {
         [Export] public byte[] compiledYarnProgram;
         [Export] public Localization baseLocalization;
 
-        [Export] public Localization[] localizations = new Localization[0];
+        [Export] public Array<Localization> localizations = new Array<Localization>();
         [Export] public LineMetadata lineMetadata;
         [Export] public LocalizationType localizationType;
 
@@ -53,7 +53,14 @@ namespace Yarn.GodotYarn {
         public YarnScript[] SourceScripts {
             set {
                 sourceScripts = value;
-                // Compile();
+
+                #if TOOLS
+
+                var result = YarnProjectEditorCompiler.CompileYarnProject(this);
+
+                GD.Print("Compilation result: ", result);
+
+                #endif
             }
             get { return sourceScripts; }
         }
