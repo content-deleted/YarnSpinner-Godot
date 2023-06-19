@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://bkgjbmr4jpndd"]
+
+[ext_resource type="Texture2D" uid="uid://cff5l8xetwu0k" path="res://addons/YarnSpinner-Godot/Textures/Selector-On.png" id="1_8ju8x"]
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/OptionView.cs" id="1_xf4ew"]
+
+[node name="OptionView" type="Button"]
+offset_right = 455.0
+offset_bottom = 31.0
+theme_override_colors/icon_normal_color = Color(1, 1, 1, 0.501961)
+theme_override_colors/icon_hover_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 36
+text = "Option Text"
+icon = ExtResource("1_8ju8x")
+alignment = 0
+expand_icon = true
+script = ExtResource("1_xf4ew")

@@ -82,7 +82,7 @@ namespace Yarn.GodotYarn {
         public string GetLocalizedString(string key) {
             string result;
 
-            GD.Print(key);
+            // GD.Print(key);
 
             if (_runtimeStringTable.TryGetValue(key, out result)) {
                 return result;

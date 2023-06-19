@@ -1,0 +1,55 @@
+[gd_scene load_steps=4 format=3 uid="uid://b230rcu43va40"]
+
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/OptionListView.cs" id="1_a37pc"]
+[ext_resource type="PackedScene" uid="uid://bkgjbmr4jpndd" path="res://addons/YarnSpinner-Godot/Prefabs/OptionView.tscn" id="2_76ye3"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xawdr"]
+content_margin_left = 32.0
+content_margin_top = 32.0
+content_margin_right = 32.0
+content_margin_bottom = 32.0
+bg_color = Color(0, 0, 0, 0.501961)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="OptionListView" type="Control" node_paths=PackedStringArray("optionGroup", "lastLineText")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_a37pc")
+optionGroup = NodePath("Background/VBoxContainer")
+optionViewPrefab = ExtResource("2_76ye3")
+lastLineText = NodePath("Background/VBoxContainer/Line Text")
+
+[node name="Background" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.975
+anchor_right = 0.95
+anchor_bottom = 0.975
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_xawdr")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background"]
+layout_mode = 2
+
+[node name="Line Text" type="RichTextLabel" parent="Background/VBoxContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 36
+theme_override_font_sizes/bold_font_size = 36
+theme_override_font_sizes/italics_font_size = 36
+theme_override_font_sizes/bold_italics_font_size = 36
+theme_override_font_sizes/mono_font_size = 36
+bbcode_enabled = true
+text = "[center]Here's a big long line of dialogue, ready to be shown to the player.[/center]"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+shortcut_keys_enabled = false

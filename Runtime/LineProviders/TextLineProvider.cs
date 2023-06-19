@@ -13,12 +13,12 @@ namespace Yarn.GodotYarn {
         [Language]
         public string textLanguageCode = System.Globalization.CultureInfo.CurrentCulture.Name;
         public override LocalizedLine GetLocalizedLine(Yarn.Line line) {
-            GD.Print(line.ID);
-            GD.Print(line.Substitutions);
+            // GD.Print(line.ID);
+            // GD.Print(line.Substitutions);
 
             var text = YarnProject.GetLocalization(textLanguageCode).GetLocalizedString(line.ID);
 
-            GD.Print(text);
+            // GD.Print(text);
 
             return new LocalizedLine() {
                 TextID = line.ID,
