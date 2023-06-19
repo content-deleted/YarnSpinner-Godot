@@ -557,7 +557,7 @@ namespace Yarn.GodotYarn {
             CommandDispatchResult dispatchResult;
 
             // Try looking in the command handlers first
-            dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
+            dispatchResult = await DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
 
             if(dispatchResult != CommandDispatchResult.NotFound) {
                 // We found the command! We don't need to keep looking. (It may
@@ -718,7 +718,7 @@ namespace Yarn.GodotYarn {
         /// found.</param>
         /// <returns>True if the command was dispatched to a game object;
         /// false otherwise.</returns>
-        CommandDispatchResult DispatchCommandToRegisteredHandlers(Command command, Action onSuccessfulDispatch) {
+        Task<CommandDispatchResult> DispatchCommandToRegisteredHandlers(Command command, Action onSuccessfulDispatch) {
             return DispatchCommandToRegisteredHandlers(command.Text, onSuccessfulDispatch);
         }
 
@@ -726,7 +726,7 @@ namespace Yarn.GodotYarn {
         /// Action)"/>
         /// <param name="command">The text of the command to
         /// dispatch.</param>
-        internal CommandDispatchResult DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
+        internal async Task<CommandDispatchResult> DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
             var commandTokens = SplitCommandText(command).ToArray();
 
             if (commandTokens.Length == 0) {
@@ -755,11 +755,11 @@ namespace Yarn.GodotYarn {
                 return CommandDispatchResult.Failed;
             }
 
-            if (typeof(IEnumerator).IsAssignableFrom(methodInfo.ReturnType)) {
+            if(typeof(Task).IsAssignableFrom(methodInfo.ReturnType)) {
                 // This delegate returns a YieldInstruction of some kind
                 // (e.g. a Coroutine). Run it, and wait for it to finish
                 // before calling onSuccessfulDispatch.
-                WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch);
+                await WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch);
             }
             else if (typeof(void) == methodInfo.ReturnType) {
                 // This method does not return anything. Invoke it and call
@@ -776,18 +776,15 @@ namespace Yarn.GodotYarn {
             return CommandDispatchResult.Success;
         }
 
-        private static IEnumerator WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
+        private static async Task WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
             // Invoke the delegate.
-            var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as IEnumerator;
+            var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as Task;
 
-            GD.Print("Wait for yield");
+            // GD.Print("Wait for yield");
 
-            if (yieldInstruction.MoveNext()) {
-                // Yield on the return result.
-                yield return yieldInstruction.Current;
-            }
+            await yieldInstruction;
 
-            GD.Print("Done yielding");
+            // GD.Print("Done yielding");
 
             // Call the completion handler.
             onSuccessfulDispatch();
