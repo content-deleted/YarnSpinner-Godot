@@ -379,9 +379,11 @@ namespace Yarn.GodotYarn {
         }
 
         static ActionManager() {
-            // We always want to get actions from the default Unity code
-            // assembly, "Assembly-CSharp". Start by searching it.
-            AddActionsFromAssemblies(new[] {"Assembly-CSharp"});
+            // We always want to get actions from the executing Godot code
+            // assembly. Start by searching it.
+            AddActionsFromAssemblies(new[] {
+                Assembly.GetExecutingAssembly().GetName().Name
+            });
         }
 
         /// <summary>

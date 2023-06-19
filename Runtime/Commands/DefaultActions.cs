@@ -1,9 +1,15 @@
 using Godot;
 using System;
-using System.Collections;
+using System.Threading.Tasks;
 
 namespace Yarn.GodotYarn {
-    public class DefaultActions {
+    public partial class DefaultActions : Godot.Node {
+        private static DefaultActions _instance;
+
+        public DefaultActions() {
+            _instance = this;
+        }
+
         #region Commands
         /// <summary>
         /// Yarn Spinner defines two built-in commands: "wait", and "stop".
@@ -12,9 +18,19 @@ namespace Yarn.GodotYarn {
         /// </summary>
         /// <param name="duration">How long to wait.</param>
         [YarnCommand("wait")]
-        public static IEnumerator Wait(float duration) {
+        public static async Task Wait(float duration) {
             GD.Print("wait...");
-            yield return new WaitForSeconds(duration);
+
+            while(_instance == null) {
+                await Task.Yield();
+            }
+
+            double start = Godot.Time.GetUnixTimeFromSystem();
+            double end = start + duration;
+
+            while(Godot.Time.GetUnixTimeFromSystem() < end) {
+                await _instance.ToSignal(_instance.GetTree(), "process_frame");
+            }
         }
 
         #endregion
@@ -65,7 +81,7 @@ namespace Yarn.GodotYarn {
         /// <summary>
         /// Increment if integer, otherwise go to next integer.
         /// </summary>
-        [YarnFunction("inc")]
+        [YarnFunction]
         public static int Inc(float num) {
             if (Decimal(num) != 0) {
                 return Mathf.CeilToInt(num);

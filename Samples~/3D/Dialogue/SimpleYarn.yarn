@@ -1,16 +1,8 @@
 title: SimpleYarn
 tags:
 ---
-<<wait 3>>
-
 A: This is a line of text
-
-
 B: This is another line of text
-<<wait 3>>
-
-<<this is a command>>
-
 A: this is a line of text before options
 
 -> B: Option 0

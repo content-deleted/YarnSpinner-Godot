@@ -180,7 +180,6 @@ namespace Yarn.GodotYarn {
         public override void RunLine(LocalizedLine dialogueLine, Action onDialogueLineFinished) {
             // Stop any coroutines currently running on this line view (for
             // example, any other RunLine that might be running)
-            StopAllCoroutines();
 
             // Begin running the line as an async function.
             RunLineInternal(dialogueLine, onDialogueLineFinished);
