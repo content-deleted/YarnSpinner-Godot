@@ -11,17 +11,17 @@ namespace Yarn.GodotYarn {
     /// </summary>
     public static class Effects {
         /// <summary>
-        /// A coroutine that fades a <see cref="CanvasGroup"/> object's opacity
+        /// An async <see cref="Task"/> that fades a <see cref="Control"/>'s <see cref="CanvasItem.Modulate"/>
         /// from <paramref name="from"/> to <paramref name="to"/> over the
-        /// course of <see cref="fadeTime"/> seconds, and then invokes <paramref
-        /// name="onComplete"/>.
+        /// course of <paramref name="fadeTime"/> seconds
         /// </summary>
         /// <param name="from">The opacity value to start fading from, ranging
         /// from 0 to 1.</param>
         /// <param name="to">The opacity value to end fading at, ranging from 0
         /// to 1.</param>
-        /// <param name="stopToken">A <see cref="CoroutineInterruptToken"/> that
-        /// can be used to interrupt the coroutine.</param>
+        /// <param name="fadeTime">The amount of time in seconds to fade the opacity.</param>
+        /// <param name="stopToken">A <see cref="CancellationTokenSource"/> that
+        /// can be used to interrupt the <see cref="Task"/></param>
         public static async Task FadeAlpha(Control control, float from, float to, float fadeTime, CancellationTokenSource stopToken = null) {
             // GD.Print("[Effects.FadeAlpha] Start");
 
@@ -62,21 +62,21 @@ namespace Yarn.GodotYarn {
         }
 
         /// <summary>
-        /// A coroutine that gradually reveals the text in a <see
-        /// cref="TextMeshProUGUI"/> object over time.
+        /// An <see cref="async"/> <see cref="Task"/> that gradually reveals the text in a <see
+        /// cref="RichTextLabel"/> object over time.
         /// </summary>
         /// <remarks>
-        /// <para>This method works by adjusting the value of the <paramref name="text"/> parameter's <see cref="TextMeshProUGUI.maxVisibleCharacters"/> property. This means that word wrapping will not change half-way through the presentation of a word.</para>
+        /// <para>This method works by adjusting the value of the <paramref name="text"/> parameter's <see cref="RichTextLabel.VisibleCharacters"/> property. This means that word wrapping will not change half-way through the presentation of a word.</para>
         /// <para style="note">Depending on the value of <paramref name="lettersPerSecond"/>, <paramref name="onCharacterTyped"/> may be called multiple times per frame.</para>
-        /// <para>Due to an internal implementation detail of TextMeshProUGUI, this method will always take at least one frame to execute, regardless of the length of the <paramref name="text"/> parameter's text.</para>
+        /// <para>Due to an internal implementation detail of <see cref="RichTextLabel"/>, this method will always take at least one frame to execute, regardless of the length of the <paramref name="text"/> parameter's text.</para>
         /// </remarks>
-        /// <param name="text">A TextMeshProUGUI object to reveal the text
+        /// <param name="text">A <see cref="RichTextLabel"/> object to reveal the text
         /// of.</param>
         /// <param name="lettersPerSecond">The number of letters that should be
         /// revealed per second.</param>
         /// <param name="onCharacterTyped">An <see cref="Action"/> that should be called for each character that was revealed.</param>
-        /// <param name="stopToken">A <see cref="CoroutineInterruptToken"/> that
-        /// can be used to interrupt the coroutine.</param>
+        /// <param name="stopToken">A <see cref="CancellationTokenSource"/> that
+        /// can be used to interrupt the <see cref="Task"/></param>
         public static async Task Typewriter(RichTextLabel text, float lettersPerSecond, Action onCharacterTyped, CancellationTokenSource stopToken = null) {
             // GD.Print("[Effects.Typewriter] Start");
 
