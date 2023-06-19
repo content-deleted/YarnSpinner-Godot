@@ -1,6 +1,7 @@
 using Godot;
 using System;
-using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Yarn.GodotYarn {
     /// <summary>
@@ -141,7 +142,7 @@ namespace Yarn.GodotYarn {
         /// <summary>
         /// A stop token that is used to interrupt the current animation.
         /// </summary>
-        CoroutineInterruptToken currentStopToken = new CoroutineInterruptToken();
+        private CancellationTokenSource cancellationToken;
 
         public override void _EnterTree() {
             Color c = this.Modulate;
@@ -153,18 +154,17 @@ namespace Yarn.GodotYarn {
         public override void DismissLine(Action onDismissalComplete) {
             _currentLine = null;
 
-            StartCoroutine(DismissLineInternal(onDismissalComplete));
+            DismissLineInternal(onDismissalComplete);
         }
 
-        private IEnumerator DismissLineInternal(Action onDismissalComplete) {
+        private async void DismissLineInternal(Action onDismissalComplete) {
             // disabling interaction temporarily while dismissing the line
             // we don't want people to interrupt a dismissal
             this.MouseFilter = MouseFilterEnum.Ignore;
 
             // If we're using a fade effect, run it, and wait for it to finish.
             if (_useFadeEffect) {
-                yield return StartCoroutine(Effects.FadeAlpha(this, 1, 0, fadeOutTime, currentStopToken));
-                currentStopToken.Complete();
+                await Effects.FadeAlpha(this, 1, 0, fadeOutTime);
             }
 
             Color c = this.Modulate;
@@ -182,105 +182,95 @@ namespace Yarn.GodotYarn {
             // example, any other RunLine that might be running)
             StopAllCoroutines();
 
-            // Begin running the line as a coroutine.
-            StartCoroutine(RunLineInternal(dialogueLine, onDialogueLineFinished));
+            // Begin running the line as an async function.
+            RunLineInternal(dialogueLine, onDialogueLineFinished);
         }
 
-        private IEnumerator RunLineInternal(LocalizedLine dialogueLine, Action onDialogueLineFinished) {
-            IEnumerator PresentLine() {
-                _lineText.Visible = true;
-
-                // canvasGroup.gameObject.SetActive(true);
-
-                // Hide the continue button until presentation is complete (if
-                // we have one).
-                if (_continueButton != null) {
-                    _continueButton.Visible = false;
-                }
-
-                if (_characterNameText != null) {
-                    // If we have a character name text view, show the character
-                    // name in it, and show the rest of the text in our main
-                    // text view.
-                    _characterNameText.Text = $"[center]{dialogueLine.CharacterName}[/center]";
-                    _lineText.Text = dialogueLine.TextWithoutCharacterName.Text;
-                }
-                else {
-                    // We don't have a character name text view. Should we show
-                    // the character name in the main text view?
-                    if (_showCharacterNameInLineView) {
-                        // Yep! Show the entire text.
-                        _lineText.Text = dialogueLine.Text.Text;
-                    }
-                    else {
-                        // Nope! Show just the text without the character name.
-                        _lineText.Text = dialogueLine.TextWithoutCharacterName.Text;
-                    }
-                }
-
-                if (_useTypewriterEffect) {
-                    // If we're using the typewriter effect, hide all of the
-                    // text before we begin any possible fade (so we don't fade
-                    // in on visible text).
-                    _lineText.VisibleCharacters = 0;
-                }
-                else {
-                    // Ensure that the max visible characters is effectively
-                    // unlimited.
-                    _lineText.VisibleCharacters = -1;
-                }
-
-                // If we're using the fade effect, start it, and wait for it to
-                // finish.
-                if (_useFadeEffect) {
-                    yield return StartCoroutine(Effects.FadeAlpha(this, 0, 1, fadeInTime, currentStopToken));
-                    if (currentStopToken.WasInterrupted) {
-                        // The fade effect was interrupted. Stop this entire
-                        // coroutine.
-                        yield break;
-                    }
-                }
-
-                // If we're using the typewriter effect, start it, and wait for
-                // it to finish.
-                if (_useTypewriterEffect) {
-                    // setting the canvas all back to its defaults because if we didn't also fade we don't have anything visible
-                    Color c = this.Modulate;
-                    c.A = 1;
-                    this.Modulate = c;
-                    this.MouseFilter = MouseFilterEnum.Stop;
-
-                    yield return StartCoroutine(
-                        Effects.Typewriter(
-                            _lineText,
-                            _typewriterEffectSpeed,
-                            () => EmitSignal("onCharacterTyped"),
-                            currentStopToken
-                        )
-                    );
-                    if (currentStopToken.WasInterrupted) {
-                        // The typewriter effect was interrupted. Stop this
-                        // entire coroutine.
-                        // GD.Print("Was interrupted");
-                        yield break;
-                    }
-                }
-            }
-
+        private async void RunLineInternal(LocalizedLine dialogueLine, Action onDialogueLineFinished) {
             _currentLine = dialogueLine;
 
             // Run any presentations as a single coroutine. If this is stopped,
             // which UserRequestedViewAdvancement can do, then we will stop all
             // of the animations at once.
-            yield return StartCoroutine(PresentLine());
+            _lineText.Visible = true;
 
-            currentStopToken.Complete();
+            // canvasGroup.gameObject.SetActive(true);
+
+            // Hide the continue button until presentation is complete (if
+            // we have one).
+            if (_continueButton != null) {
+                _continueButton.Visible = false;
+            }
+
+            if (_characterNameText != null) {
+                // If we have a character name text view, show the character
+                // name in it, and show the rest of the text in our main
+                // text view.
+                _characterNameText.Text = $"[center]{dialogueLine.CharacterName}[/center]";
+                _lineText.Text = dialogueLine.TextWithoutCharacterName.Text;
+            }
+            else {
+                // We don't have a character name text view. Should we show
+                // the character name in the main text view?
+                if (_showCharacterNameInLineView) {
+                    // Yep! Show the entire text.
+                    _lineText.Text = dialogueLine.Text.Text;
+                }
+                else {
+                    // Nope! Show just the text without the character name.
+                    _lineText.Text = dialogueLine.TextWithoutCharacterName.Text;
+                }
+            }
+
+            if (_useTypewriterEffect) {
+                // If we're using the typewriter effect, hide all of the
+                // text before we begin any possible fade (so we don't fade
+                // in on visible text).
+                _lineText.VisibleCharacters = 0;
+            }
+            else {
+                // Ensure that the max visible characters is effectively
+                // unlimited.
+                _lineText.VisibleCharacters = -1;
+            }
+
+            // If we're using the fade effect, start it, and wait for it to
+            // finish.
+            if (_useFadeEffect) {
+                await Effects.FadeAlpha(this, 0, 1, fadeInTime);
+                /*
+                yield return StartCoroutine(Effects.FadeAlpha(this, 0, 1, fadeInTime, currentStopToken));
+                if (currentStopToken.WasInterrupted) {
+                    // The fade effect was interrupted. Stop this entire
+                    // coroutine.
+                    yield break;
+                }
+                */
+            }
+
+            Color c;
+
+            // If we're using the typewriter effect, start it, and wait for
+            // it to finish.
+            if (_useTypewriterEffect) {
+                // setting the canvas all back to its defaults because if we didn't also fade we don't have anything visible
+                c = this.Modulate;
+                c.A = 1;
+                this.Modulate = c;
+                this.MouseFilter = MouseFilterEnum.Stop;
+
+                cancellationToken = new CancellationTokenSource();
+                await Effects.Typewriter(_lineText, _typewriterEffectSpeed, ()=>EmitSignal("onCharacterTyped"), cancellationToken);
+            }
 
             // All of our text should now be visible.
+            cancellationToken.Dispose();
+            cancellationToken = null;
+
             _lineText.VisibleCharacters = -1;
 
             // Our view should at be at full opacity.
-            Color c = this.Modulate;
+            c = this.Modulate;
             c.A = 1.0f;
             this.Modulate = c;
             this.MouseFilter = MouseFilterEnum.Stop;
@@ -294,7 +284,7 @@ namespace Yarn.GodotYarn {
             // If we have a hold time, wait that amount of time, and then
             // continue.
             if (_holdTime > 0) {
-                yield return new WaitForSeconds(_holdTime);
+                await Task.Delay((int)(_holdTime * 1000));
             }
 
             if (_autoAdvance == false) {
@@ -303,7 +293,7 @@ namespace Yarn.GodotYarn {
                 // completion handler - we'll wait for a call to
                 // UserRequestedViewAdvancement, which will interrupt this
                 // coroutine.
-                yield break;
+                return;
             }
 
             // Our presentation is complete; call the completion handler.
@@ -327,10 +317,11 @@ namespace Yarn.GodotYarn {
             // animation coroutine is what actually interrupts
             // for now this is fine.
             // Is an animation running that we can stop?
-            if (currentStopToken.CanInterrupt) {
-                // Stop the current animation, and skip to the end of whatever
+            if(cancellationToken != null && cancellationToken.IsCancellationRequested == false) {
+            // Stop the current animation, and skip to the end of whatever
                 // started it.
-                currentStopToken.Interrupt();
+                cancellationToken.Cancel();
+                return;
             }
 
             // No animation is now running. Signal that we want to

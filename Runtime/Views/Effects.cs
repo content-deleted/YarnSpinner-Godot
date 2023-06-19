@@ -1,5 +1,6 @@
 using System;
-using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using Godot;
 
 namespace Yarn.GodotYarn {
@@ -21,28 +22,27 @@ namespace Yarn.GodotYarn {
         /// to 1.</param>
         /// <param name="stopToken">A <see cref="CoroutineInterruptToken"/> that
         /// can be used to interrupt the coroutine.</param>
-        public static IEnumerator FadeAlpha(Control control, float from, float to, float fadeTime, CoroutineInterruptToken stopToken = null) {
+        public static async Task FadeAlpha(Control control, float from, float to, float fadeTime, CancellationTokenSource stopToken = null) {
             // GD.Print("[Effects.FadeAlpha] Start");
-            stopToken?.Start();
 
             Color c = control.Modulate;
             c.A = from;
 
-            double timeElapsed = 0.0;
+            double start = Godot.Time.GetUnixTimeFromSystem();
+            double end = start + fadeTime;
 
-            while (timeElapsed < fadeTime) {
-                if (stopToken?.WasInterrupted ?? false) {
-                    yield break;
+            while(Godot.Time.GetUnixTimeFromSystem() < end) {
+                if(stopToken?.IsCancellationRequested ?? false) {
+                    break;
                 }
 
-                double fraction = timeElapsed / fadeTime;
-                timeElapsed += control.GetProcessDeltaTime();
-
-                float a = Mathf.Lerp(from, to, (float)fraction);
+                double t = Mathf.InverseLerp(start, end, Godot.Time.GetUnixTimeFromSystem());
+                float a = Mathf.Lerp(from, to, (float)t);
 
                 c.A = a;
                 control.Modulate = c;
-                yield return null;
+
+                await control.ToSignal(control.GetTree(), "process_frame");
             }
 
             c.A = to;
@@ -50,7 +50,7 @@ namespace Yarn.GodotYarn {
 
             // If our destination alpha is zero, disable interactibility,
             // because the canvas group is now invisible.
-            if (to == 0) {
+            if(to <= 0) {
                 control.MouseFilter = Control.MouseFilterEnum.Ignore;
             }
             else {
@@ -58,7 +58,6 @@ namespace Yarn.GodotYarn {
                 control.MouseFilter = Control.MouseFilterEnum.Stop;
             }
 
-            stopToken?.Complete();
             // GD.Print("[Effects.FadeAlpha] Complete");
         }
 
@@ -78,8 +77,7 @@ namespace Yarn.GodotYarn {
         /// <param name="onCharacterTyped">An <see cref="Action"/> that should be called for each character that was revealed.</param>
         /// <param name="stopToken">A <see cref="CoroutineInterruptToken"/> that
         /// can be used to interrupt the coroutine.</param>
-        public static IEnumerator Typewriter(RichTextLabel text, float lettersPerSecond, Action onCharacterTyped, CoroutineInterruptToken stopToken = null) {
-            stopToken?.Start();
+        public static async Task Typewriter(RichTextLabel text, float lettersPerSecond, Action onCharacterTyped, CancellationTokenSource stopToken = null) {
             // GD.Print("[Effects.Typewriter] Start");
 
             // Start with everything invisible
@@ -88,7 +86,7 @@ namespace Yarn.GodotYarn {
             // Wait a single frame to let the text component process its
             // content, otherwise text.textInfo.characterCount won't be
             // accurate
-            yield return null;
+            await text.ToSignal(text.GetTree(), "process_frame");
 
             // How many visible characters are present in the text?
             var characterCount = text.GetTotalCharacterCount();
@@ -97,8 +95,7 @@ namespace Yarn.GodotYarn {
             if (lettersPerSecond <= 0 || characterCount == 0) {
                 // Show everything and return
                 text.VisibleCharacters = -1;
-                stopToken?.Complete();
-                yield break;
+                return;
             }
 
             // Convert 'letters per second' into its inverse
@@ -116,10 +113,10 @@ namespace Yarn.GodotYarn {
             var accumulator = text.GetProcessDeltaTime();
 
             while (text.VisibleCharacters < characterCount) {
-                if (stopToken?.WasInterrupted ?? false) {
+                if(stopToken?.IsCancellationRequested ?? false) {
                     text.VisibleCharacters = -1;
                     // GD.Print("[Effects.Typewriter] Interrupt");
-                    yield break;
+                    break;
                 }
 
                 // We need to show as many letters as we have accumulated
@@ -132,14 +129,12 @@ namespace Yarn.GodotYarn {
 
                 accumulator += text.GetProcessDeltaTime();
 
-                yield return null;
+                await text.ToSignal(text.GetTree(), "process_frame");
             }
 
             // We either finished displaying everything, or were
             // interrupted. Either way, display everything now.
             text.VisibleCharacters = characterCount;
-
-            stopToken?.Complete();
             // GD.Print("[Effects.Typewriter] Complete");
         }
     }

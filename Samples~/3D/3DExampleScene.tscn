@@ -1,7 +1,7 @@
 [gd_scene load_steps=9 format=3 uid="uid://856h1pafym44"]
 
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/DialogueRunner.cs" id="1_ats83"]
-[ext_resource type="Resource" uid="uid://ckixuaqeep47s" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn YarnProject.tres" id="2_4x772"]
+[ext_resource type="Resource" uid="uid://rpk7m408efyi" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/3D Sample YarnProject.tres" id="2_y74ba"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LineProviders/TextLineProvider.cs" id="3_a4q5x"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/InMemoryVariableStorage.cs" id="4_7vp8w"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/LineView.cs" id="4_8jyim"]
@@ -29,10 +29,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ats83")
-yarnProject = ExtResource("2_4x772")
+yarnProject = ExtResource("2_y74ba")
 _variableStorage = NodePath("InMemoryVariableStorage")
 views = [NodePath("LineView")]
-startNode = "SimpleYarn"
+startNode = "Start3DSample"
 lineProvider = NodePath("TextLineProvider")
 verboseLogging = false
 
@@ -51,6 +51,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("4_8jyim")
 _lineText = NodePath("Background/VBoxContainer/Line Text")
+_useFadeEffect = true
+_useTypewriterEffect = true
 _typewriterEffectSpeed = 24.0
 _continueButton = NodePath("Continue Button")
 _characterNameText = NodePath("Background/VBoxContainer/Character Name")
