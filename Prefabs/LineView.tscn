@@ -1,0 +1,98 @@
+[gd_scene load_steps=5 format=3 uid="uid://hq3anudf4mek"]
+
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/LineView.cs" id="1_xhqko"]
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/Views/DialogueAdvanceInput.cs" id="2_tihw1"]
+[ext_resource type="Texture2D" uid="uid://ccf3iwtc7f7us" path="res://addons/YarnSpinner-Godot/Textures/Divider.svg" id="3_om6cl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xawdr"]
+content_margin_left = 32.0
+content_margin_top = 32.0
+content_margin_right = 32.0
+content_margin_bottom = 32.0
+bg_color = Color(0, 0, 0, 0.501961)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="LineView" type="Control" node_paths=PackedStringArray("_lineText", "_continueButton", "_characterNameText")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_xhqko")
+_lineText = NodePath("Background/VBoxContainer/Line Text")
+_useFadeEffect = true
+_useTypewriterEffect = true
+_typewriterEffectSpeed = 24.0
+_continueButton = NodePath("Continue Button")
+_characterNameText = NodePath("Background/VBoxContainer/Character Name")
+
+[node name="DialogueAdvanceInput" type="Node" parent="." node_paths=PackedStringArray("dialogueView")]
+script = ExtResource("2_tihw1")
+dialogueView = NodePath("..")
+continueActionType = 2
+
+[node name="Background" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.05
+anchor_top = 0.975
+anchor_right = 0.95
+anchor_bottom = 0.975
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_xawdr")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Background"]
+layout_mode = 2
+
+[node name="Character Name" type="RichTextLabel" parent="Background/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 36
+theme_override_font_sizes/bold_font_size = 36
+theme_override_font_sizes/italics_font_size = 36
+theme_override_font_sizes/bold_italics_font_size = 36
+theme_override_font_sizes/mono_font_size = 36
+bbcode_enabled = true
+text = "[center][b]Character Name[/b][/center]"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+shortcut_keys_enabled = false
+
+[node name="Divider" type="TextureRect" parent="Background/VBoxContainer"]
+texture_filter = 5
+layout_mode = 2
+texture = ExtResource("3_om6cl")
+stretch_mode = 3
+
+[node name="Line Text" type="RichTextLabel" parent="Background/VBoxContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/normal_font_size = 36
+theme_override_font_sizes/bold_font_size = 36
+theme_override_font_sizes/italics_font_size = 36
+theme_override_font_sizes/bold_italics_font_size = 36
+theme_override_font_sizes/mono_font_size = 36
+bbcode_enabled = true
+text = "[center]Here's a big long line of dialogue, ready to be shown to the player.[/center]"
+fit_content = true
+scroll_active = false
+autowrap_mode = 0
+shortcut_keys_enabled = false
+
+[node name="Continue Button" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_top = 0.975
+anchor_right = 0.5
+anchor_bottom = 0.975
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 8
+text = "Continue"
+icon_alignment = 1
