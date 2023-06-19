@@ -1,0 +1,8 @@
+[gd_resource type="Resource" load_steps=2 format=3 uid="uid://dxfkqwvhfw44x"]
+
+[ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LanguageToSourceAsset.cs" id="1_hh4mu"]
+
+[resource]
+script = ExtResource("1_hh4mu")
+LanguageID = "en-US"
+StringFile = ""

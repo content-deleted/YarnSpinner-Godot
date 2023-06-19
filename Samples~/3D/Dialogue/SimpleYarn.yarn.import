@@ -1,0 +1,14 @@
+[remap]
+
+importer="com.YarnSpinner-Godot.YarnScript"
+type="Resource"
+uid="uid://cl5j88loc5q85"
+path="res://.godot/imported/SimpleYarn.yarn-90ddf15e2c6f70f947cd7083b6f14915.tres"
+
+[deps]
+
+source_file="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn.yarn"
+dest_files=["res://.godot/imported/SimpleYarn.yarn-90ddf15e2c6f70f947cd7083b6f14915.tres"]
+
+[params]
+
