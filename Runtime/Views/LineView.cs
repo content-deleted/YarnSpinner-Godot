@@ -124,14 +124,14 @@ namespace Yarn.GodotYarn {
         internal bool _showCharacterNameInLineView = true;
 
         /// <summary>
-        /// The <see cref="RichTextLabel"/> object that displays the character
+        /// The <see cref="Label"/> object that displays the character
         /// names found in dialogue lines.
         /// </summary>
         /// <remarks>
         /// If the <see cref="LineView"/> receives a line that does not contain
         /// a character name, this object will be left blank.
         /// </remarks>
-        [Export] RichTextLabel _characterNameText;
+        [Export] Label _characterNameText;
 
        /// <summary>
         /// The current <see cref="LocalizedLine"/> that this line view is
@@ -205,7 +205,7 @@ namespace Yarn.GodotYarn {
                 // If we have a character name text view, show the character
                 // name in it, and show the rest of the text in our main
                 // text view.
-                _characterNameText.Text = $"[center]{dialogueLine.CharacterName}[/center]";
+                _characterNameText.Text = dialogueLine.CharacterName;
                 _lineText.Text = dialogueLine.TextWithoutCharacterName.Text;
             }
             else {
