@@ -48,19 +48,11 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_xawdr")
 [node name="VBoxContainer" type="VBoxContainer" parent="Background"]
 layout_mode = 2
 
-[node name="Character Name" type="RichTextLabel" parent="Background/VBoxContainer"]
+[node name="Character Name" type="Label" parent="Background/VBoxContainer"]
 layout_mode = 2
-theme_override_font_sizes/normal_font_size = 36
-theme_override_font_sizes/bold_font_size = 36
-theme_override_font_sizes/italics_font_size = 36
-theme_override_font_sizes/bold_italics_font_size = 36
-theme_override_font_sizes/mono_font_size = 36
-bbcode_enabled = true
-text = "[center][b]Character Name[/b][/center]"
-fit_content = true
-scroll_active = false
-autowrap_mode = 0
-shortcut_keys_enabled = false
+theme_override_font_sizes/font_size = 36
+text = "Character Name"
+horizontal_alignment = 1
 
 [node name="Divider" type="TextureRect" parent="Background/VBoxContainer"]
 texture_filter = 5
