@@ -263,7 +263,9 @@ namespace Yarn.GodotYarn {
             }
 
             // All of our text should now be visible.
-            cancellationToken.Dispose();
+            if(cancellationToken != null) {
+                cancellationToken.Dispose();
+            }
             cancellationToken = null;
 
             _lineText.VisibleCharacters = -1;
