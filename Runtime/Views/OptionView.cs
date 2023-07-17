@@ -44,7 +44,6 @@ namespace Yarn.GodotYarn {
         }
 
         public override void _Pressed() {
-            GD.Print("Pressed");
             InvokeOptionSelected();
         }
     }
