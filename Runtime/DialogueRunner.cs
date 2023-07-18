@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using System.Linq;
 
 namespace Yarn.GodotYarn {
-    [Tool/*, GlobalClass*/]
     public partial class DialogueRunner : Control {
         /// <summary>
         /// The <see cref="YarnProject"/> asset that should be loaded on
@@ -400,10 +399,6 @@ namespace Yarn.GodotYarn {
         private Yarn.OptionSet currentOptions;
 
         public override void _Ready() {
-            if(Godot.Engine.IsEditorHint()) {
-                return;
-            }
-
             if (lineProvider == null) {
                 // If we don't have a line provider, create a
                 // TextLineProvider and make it use that.
