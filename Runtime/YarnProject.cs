@@ -58,7 +58,7 @@ namespace Yarn.GodotYarn {
 
                 var result = YarnProjectEditorCompiler.CompileYarnProject(this);
 
-                GD.Print("Compilation result: ", result);
+                GD.Print($"Yarn Project compilation result: {result}");
 
                 #endif
             }
