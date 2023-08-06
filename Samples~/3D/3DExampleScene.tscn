@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://856h1pafym44"]
 
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/DialogueRunner.cs" id="1_ats83"]
-[ext_resource type="Resource" uid="uid://ck800e3eg5gul" path="res://data/Dialogue/SpaceJourney.tres" id="2_7dku3"]
+[ext_resource type="Resource" uid="uid://ckixuaqeep47s" path="res://addons/YarnSpinner-Godot/Samples~/3D/Dialogue/SimpleYarn YarnProject.tres" id="2_a1rei"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/LineProviders/TextLineProvider.cs" id="3_a4q5x"]
 [ext_resource type="Script" path="res://addons/YarnSpinner-Godot/Runtime/InMemoryVariableStorage.cs" id="4_7vp8w"]
 [ext_resource type="PackedScene" uid="uid://hq3anudf4mek" path="res://addons/YarnSpinner-Godot/Prefabs/LineView.tscn" id="5_rav1d"]
@@ -17,9 +17,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ats83")
-yarnProject = ExtResource("2_7dku3")
+yarnProject = ExtResource("2_a1rei")
 _variableStorage = NodePath("InMemoryVariableStorage")
 views = [NodePath("LineView"), NodePath("OptionListView")]
+startNode = "SimpleYarn"
 lineProvider = NodePath("TextLineProvider")
 verboseLogging = false
 

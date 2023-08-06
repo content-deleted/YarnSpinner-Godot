@@ -11,19 +11,19 @@ namespace Yarn.GodotYarn {
         public static T Find<T>() where T : Node {
             if(_instance == null) return null;
 
-            return Find<T>(_instance.GetTree().CurrentScene, true);
+            return Find<T>(_instance.GetTree().Root, true);
         }
 
         public static Node Find(System.Type type) {
             if(_instance == null) return null;
 
-            return Find(_instance.GetTree().CurrentScene, type, true);
+            return Find(_instance.GetTree().Root, type, true);
         }
 
         public static Node Find(string name) {
             if(_instance == null) return null;
 
-            return Find(_instance.GetTree().CurrentScene, name, true);
+            return Find(_instance.GetTree().Root, name, true);
         }
 
         // Recursive function to find a node of the specified type

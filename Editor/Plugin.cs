@@ -66,12 +66,14 @@ namespace Yarn.GodotYarn.Editor {
             );
 
             AddAutoloadSingleton("NodeFindUtility", RUNTIME_PATH + "NodeFindUtility.cs");
+            AddAutoloadSingleton("DefaultActions", RUNTIME_PATH + "Commands/DefaultActions.cs");
 
             GD.Print("YarnSpinner-Godot plugin initialized");
         }
 
         public override void _ExitTree() {
             RemoveAutoloadSingleton("NodeFindUtility");
+            RemoveAutoloadSingleton("DefaultActions");
 
             RemoveCustomType("TextLineProvider");
             RemoveCustomType("DialogueAdvanceInput");

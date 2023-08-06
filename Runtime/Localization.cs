@@ -136,7 +136,7 @@ namespace Yarn.GodotYarn {
         /// cref="StringTableEntry"/> objects to add.</param>
         internal void AddLocalizedStringsToAsset(IEnumerable<StringTableEntry> stringTableEntries) {
             foreach (var entry in stringTableEntries) {
-                GD.Print("add " + entry.ID + ": " + entry.Text);
+                // GD.Print("add " + entry.ID + ": " + entry.Text);
                 AddLocalizedStringToAsset(entry.ID, entry.Text);
             }
         }

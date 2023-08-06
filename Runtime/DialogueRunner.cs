@@ -2,10 +2,11 @@ using Godot;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Linq;
 
 namespace Yarn.GodotYarn {
-    [Tool/*, GlobalClass*/]
     public partial class DialogueRunner : Control {
         /// <summary>
         /// The <see cref="YarnProject"/> asset that should be loaded on
@@ -227,46 +228,6 @@ namespace Yarn.GodotYarn {
             }
         }
 
-        public IEnumerator StartCoroutine(IEnumerator enumerator) {
-            if (enumerator.MoveNext()) {
-                coroutines.Add(enumerator);
-            }
-
-            return null;
-        }
-
-        public override void _Process(double delta) {
-            if(Godot.Engine.IsEditorHint()) {
-                return;
-            }
-
-            List<IEnumerator> dead = new List<IEnumerator>();
-
-            for(int i = 0; i < coroutines.Count; ++i) {
-                IEnumerator c = coroutines[i];
-
-                if(c == null) continue;
-
-                var sec = c.Current as WaitForSeconds;
-                if(sec != null) {
-                    if(sec.Tick(delta)) {
-                        if(c.MoveNext() == false) {
-                            dead.Add(c);
-                        }
-                    }
-                }
-                else if(c.MoveNext() == false) {
-                    dead.Add(c);
-                }
-            }
-
-            foreach (var c in dead) {
-                coroutines.Remove(c);
-            }
-
-            dead.Clear();
-        }
-
         /// <summary>
         /// Start the dialogue from a specific node.
         /// </summary>
@@ -287,7 +248,7 @@ namespace Yarn.GodotYarn {
                     continue;
                 }
 
-                dialogueView.StopAllCoroutines();
+                // dialogueView.StopAllCoroutines();
             }
 
             // Get it going
@@ -313,17 +274,17 @@ namespace Yarn.GodotYarn {
                 // The line provider isn't ready to give us our lines
                 // yet. We need to start a coroutine that waits for
                 // them to finish loading, and then runs the dialogue.
-                StartCoroutine(ContinueDialogueWhenLinesAvailable());
+                ContinueDialogueWhenLinesAvailable();
             }
             else {
                 ContinueDialogue();
             }
         }
 
-        private IEnumerator ContinueDialogueWhenLinesAvailable() {
+        private async void ContinueDialogueWhenLinesAvailable() {
             // Wait until lineProvider.LinesAvailable becomes true
-            while (lineProvider.LinesAvailable == false) {
-                yield return null;
+            while(lineProvider.LinesAvailable == false) {
+                await ToSignal(GetTree(), "process_frame");
             }
 
             // And then run our dialogue.
@@ -438,10 +399,6 @@ namespace Yarn.GodotYarn {
         private Yarn.OptionSet currentOptions;
 
         public override void _Ready() {
-            if(Godot.Engine.IsEditorHint()) {
-                return;
-            }
-
             if (lineProvider == null) {
                 // If we don't have a line provider, create a
                 // TextLineProvider and make it use that.
@@ -589,13 +546,13 @@ namespace Yarn.GodotYarn {
             EmitSignal("onDialogueComplete");
         }
 
-        void HandleCommand(Yarn.Command command) {
+        async void HandleCommand(Yarn.Command command) {
             GD.Print($"[HandleCommand] {command.Text}");
 
             CommandDispatchResult dispatchResult;
 
             // Try looking in the command handlers first
-            dispatchResult = DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
+            dispatchResult = await DispatchCommandToRegisteredHandlers(command, ContinueDialogue);
 
             if(dispatchResult != CommandDispatchResult.NotFound) {
                 // We found the command! We don't need to keep looking. (It may
@@ -608,7 +565,7 @@ namespace Yarn.GodotYarn {
 
             // We didn't find it in the comand handlers. Try looking in the
             // game objects. If it is, continue dialogue.
-            dispatchResult = DispatchCommandToGameObject(command, ContinueDialogue);
+            dispatchResult = await DispatchCommandToGameObject(command, ContinueDialogue);
 
             if (dispatchResult != CommandDispatchResult.NotFound) {
                 // As before: we found a handler for this command, so we stop
@@ -756,7 +713,7 @@ namespace Yarn.GodotYarn {
         /// found.</param>
         /// <returns>True if the command was dispatched to a game object;
         /// false otherwise.</returns>
-        CommandDispatchResult DispatchCommandToRegisteredHandlers(Command command, Action onSuccessfulDispatch) {
+        Task<CommandDispatchResult> DispatchCommandToRegisteredHandlers(Command command, Action onSuccessfulDispatch) {
             return DispatchCommandToRegisteredHandlers(command.Text, onSuccessfulDispatch);
         }
 
@@ -764,7 +721,7 @@ namespace Yarn.GodotYarn {
         /// Action)"/>
         /// <param name="command">The text of the command to
         /// dispatch.</param>
-        internal CommandDispatchResult DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
+        internal async Task<CommandDispatchResult> DispatchCommandToRegisteredHandlers(string command, Action onSuccessfulDispatch) {
             var commandTokens = SplitCommandText(command).ToArray();
 
             if (commandTokens.Length == 0) {
@@ -793,11 +750,11 @@ namespace Yarn.GodotYarn {
                 return CommandDispatchResult.Failed;
             }
 
-            if (typeof(IEnumerator).IsAssignableFrom(methodInfo.ReturnType)) {
+            if(typeof(Task).IsAssignableFrom(methodInfo.ReturnType)) {
                 // This delegate returns a YieldInstruction of some kind
                 // (e.g. a Coroutine). Run it, and wait for it to finish
                 // before calling onSuccessfulDispatch.
-                StartCoroutine(WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch));
+                await WaitForYieldInstruction(@delegate, finalParameters, onSuccessfulDispatch);
             }
             else if (typeof(void) == methodInfo.ReturnType) {
                 // This method does not return anything. Invoke it and call
@@ -814,24 +771,21 @@ namespace Yarn.GodotYarn {
             return CommandDispatchResult.Success;
         }
 
-        private static IEnumerator WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
+        private static async Task WaitForYieldInstruction(Delegate @theDelegate, object[] finalParametersToUse, Action onSuccessfulDispatch) {
             // Invoke the delegate.
-            var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as IEnumerator;
+            var yieldInstruction = @theDelegate.DynamicInvoke(finalParametersToUse) as Task;
 
-            GD.Print("Wait for yield");
+            // GD.Print("Wait for yield");
 
-            if (yieldInstruction.MoveNext()) {
-                // Yield on the return result.
-                yield return yieldInstruction.Current;
-            }
+            await yieldInstruction;
 
-            GD.Print("Done yielding");
+            // GD.Print("Done yielding");
 
             // Call the completion handler.
             onSuccessfulDispatch();
         }
 
-        internal CommandDispatchResult DispatchCommandToGameObject(Yarn.Command command, Action onSuccessfulDispatch) {
+        internal Task<CommandDispatchResult> DispatchCommandToGameObject(Yarn.Command command, Action onSuccessfulDispatch) {
             // Call out to the string version of this method, because
             // Yarn.Command's constructor is only accessible from inside
             // Yarn Spinner, but we want to be able to unit test. So, we
@@ -840,7 +794,7 @@ namespace Yarn.GodotYarn {
             return DispatchCommandToGameObject(command.Text, onSuccessfulDispatch);
         }
 
-        internal CommandDispatchResult DispatchCommandToGameObject(string command, System.Action onSuccessfulDispatch) {
+        internal async Task<CommandDispatchResult> DispatchCommandToGameObject(string command, System.Action onSuccessfulDispatch) {
             if (string.IsNullOrEmpty(command)) {
                 throw new ArgumentException($"'{nameof(command)}' cannot be null or empty.", nameof(command));
             }
@@ -854,25 +808,20 @@ namespace Yarn.GodotYarn {
                 return commandExecutionResult;
             }
 
-            var enumerator = returnValue as IEnumerator;
+            var task = returnValue as Task;
 
-            if (enumerator != null) {
-                // Start the coroutine. When it's done, it will continue execution.
-                StartCoroutine(DoYarnCommand(enumerator, onSuccessfulDispatch));
+            if (task != null) {
+                // Start the task. When it's done, it will continue execution.
+                // Wait for this command task to complete
+                await task;
+                // And then signal that we're done
+                onSuccessfulDispatch.Invoke();
             }
             else {
-                // no coroutine, so we're done!
+                // no task, so we're done!
                 onSuccessfulDispatch();
             }
             return CommandDispatchResult.Success;
-
-            IEnumerator DoYarnCommand(IEnumerator source, Action onDispatch) {
-                // Wait for this command coroutine to complete
-                yield return StartCoroutine(source);
-
-                // And then signal that we're done
-                onDispatch();
-            }
         }
 
         private void PrepareForLines(IEnumerable<string> lineIDs) {

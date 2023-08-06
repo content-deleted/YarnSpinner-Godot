@@ -63,8 +63,6 @@ namespace Yarn.GodotYarn {
         /// </remarks>
         internal System.Action requestInterrupt;
 
-        private List<IEnumerator> coroutines = new List<IEnumerator>();
-
         /// <summary>Called by the <see cref="DialogueRunner"/> to signal that
         /// dialogue has started.</summary>
         /// <remarks>
@@ -352,46 +350,6 @@ namespace Yarn.GodotYarn {
         /// </remarks>
         public virtual void UserRequestedViewAdvancement() {
             // default implementation does nothing
-        }
-
-        public void StopAllCoroutines() {
-            coroutines.Clear();
-        }
-
-        protected IEnumerator StartCoroutine(IEnumerator enumerator) {
-            if (enumerator.MoveNext()) {
-                coroutines.Add(enumerator);
-            }
-
-            return null;
-        }
-
-        public override void _Process(double delta) {
-            List<IEnumerator> dead = new List<IEnumerator>();
-
-            for(int i = 0; i < coroutines.Count; ++i) {
-                IEnumerator c = coroutines[i];
-
-                if(c == null) continue;
-
-                var sec = c.Current as WaitForSeconds;
-                if(sec != null) {
-                    if(sec.Tick(delta)) {
-                        if(c.MoveNext() == false) {
-                            dead.Add(c);
-                        }
-                    }
-                }
-                else if(c.MoveNext() == false) {
-                    dead.Add(c);
-                }
-            }
-
-            foreach (var c in dead) {
-                coroutines.Remove(c);
-            }
-
-            dead.Clear();
         }
     }
 }
