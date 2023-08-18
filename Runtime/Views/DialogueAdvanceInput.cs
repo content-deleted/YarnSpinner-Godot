@@ -92,7 +92,7 @@ namespace Yarn.GodotYarn {
         }
 
         public override void _Process(double delta) {
-            if(dialogueView == null) {
+            if(dialogueView == null || Player.justStartedTalking > 0) {
                 return;
             }
 
